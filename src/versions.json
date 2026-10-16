@@ -1,0 +1,16 @@
+[
+  {
+    "file": "periodic-girl.html",
+    "label": "초기 버전",
+    "sprite": "sprites/girl.png",
+    "spriteNote": "파일: sprite.png  (HTML과 같은 폴더, 8프레임 가로 배치)",
+    "danceSettings": "const DANCE_CYCLE_SEC = 2.4;   // 한 사이클 시간 (제로투 템포에 맞춤)\nconst DANCE_LOOPS = 2;          // 정답 시 몇 번 출지"
+  },
+  {
+    "file": "periodic-sweden.html",
+    "label": "개선 버전",
+    "sprite": "sprites/sweden.png",
+    "spriteNote": "HTML에 base64로 내장된 8프레임 가로 배치 PNG",
+    "danceSettings": "const DANCE_CYCLE_SEC = 3.4;   // 한 사이클 시간 (느긋한 정답 춤)\nconst DANCE_LOOPS = 1;          // 정답 시 한 번만 춤"
+  }
+]

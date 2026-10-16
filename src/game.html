@@ -1,0 +1,3514 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>주기율표 제로투 챌린지</title>
+<style>
+  :root{
+    --bg:#0a0014;
+    --bg2:#150029;
+    --pink:#ff4fa3;
+    --pink2:#ff8ac6;
+    --cyan:#66f0ff;
+    --gold:#ffd84a;
+    --green:#7cffb2;
+    --red:#ff5c5c;
+    --cell:#1d1140;
+    --cell-border:#3a1d6e;
+    --cell-glow:#ff4fa3;
+    --text:#fff;
+    --muted:#b8a8ff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:linear-gradient(180deg,#0a0014 0%, #1a0033 100%);color:var(--text);font-family: "Press Start 2P", "DungGeunMo", "Galmuri11", "Noto Sans KR", monospace; image-rendering: pixelated;}
+  body{min-height:100vh;overflow-x:hidden}
+
+  /* 별 배경 */
+  .stars{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:
+    radial-gradient(2px 2px at 20% 30%, #fff, transparent),
+    radial-gradient(2px 2px at 70% 80%, #fff, transparent),
+    radial-gradient(1px 1px at 40% 60%, #ffd84a, transparent),
+    radial-gradient(1px 1px at 85% 20%, #66f0ff, transparent),
+    radial-gradient(2px 2px at 10% 80%, #ff8ac6, transparent),
+    radial-gradient(1px 1px at 50% 10%, #fff, transparent);
+    background-size: 100% 100%;
+    opacity:.7;
+    animation: twinkle 3s steps(2) infinite;
+  }
+  @keyframes twinkle{50%{opacity:.3}}
+
+  .app{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:14px}
+
+  header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px}
+  .title{font-size:18px;color:var(--pink2);text-shadow:2px 2px 0 #4a0a72, 0 0 14px var(--pink)}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;font-size:11px}
+  .stat{padding:6px 10px;background:#1a0a3a;border:2px solid #3a1d6e;border-radius:4px}
+  .stat b{color:var(--gold)}
+
+  .layout{display:grid;grid-template-columns: 1fr 280px;gap:12px;align-items:start}
+  @media (max-width: 980px){
+    .layout{grid-template-columns:1fr}
+    .danceCol{order:2}
+    /* 셀 텍스트 축소 */
+    .cell .num{font-size:6px}
+    .cell .sym{font-size:12px}
+    .cell .name{font-size:7px;line-height:1}
+  }
+  @media (max-width: 680px){
+    .cell .num{font-size:5px}
+    .cell .sym{font-size:10px}
+    .cell .name{font-size:6px}
+  }
+  @media (max-width: 480px){
+    .cell .name{display:none}
+    .cell .sym{font-size:9px}
+  }
+
+  /* 주기율표 그리드 18x10 (1~7주기 + 란타넘/악티늄 2줄) */
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(18, 1fr);
+    grid-auto-rows: 1fr;
+    gap:3px;
+    aspect-ratio: 18 / 10;
+    background:#0a0322;
+    border:3px solid #3a1d6e;
+    border-radius:8px;
+    padding:6px;
+    box-shadow:0 0 30px rgba(255,79,163,.25), inset 0 0 30px rgba(102,240,255,.08);
+  }
+  .cell{
+    position:relative;
+    background:var(--cell);
+    border:1px solid var(--cell-border);
+    border-radius:3px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:1px;
+    font-size:9px;
+    color:#5a4a8a;
+    overflow:hidden;
+    transition:transform .15s;
+    padding:2px 1px 1px;
+  }
+  .cell .num{position:absolute;top:1px;left:3px;font-size:7px;color:#7a6ab8;line-height:1}
+  .cell .sym{font-size:15px;font-weight:bold;color:#fff;line-height:1;letter-spacing:.3px}
+  .cell .name{
+    font-size:9px; line-height:1.05;
+    color:#fff; font-family:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    text-align:center; word-break:keep-all;
+    text-shadow:0 1px 0 rgba(0,0,0,.55);
+  }
+  .cell.empty{background:transparent;border:0}
+  .cell.locked .sym, .cell.locked .name{display:none}
+  .cell.locked .num{
+    inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:18px;line-height:1;color:#b8a8ff;font-weight:bold;
+    font-variant-numeric:tabular-nums;
+    text-shadow:0 0 8px rgba(184,168,255,.5), 2px 2px 0 rgba(0,0,0,.45);
+  }
+  @media (max-width: 980px){.cell.locked .num{font-size:14px}}
+  @media (max-width: 680px){.cell.locked .num{font-size:11px}}
+  @media (max-width: 480px){.cell.locked .num{font-size:9px}}
+
+  /* 카테고리 색상 (오픈된 셀) */
+  .cat-alkali{background:linear-gradient(160deg,#ff5e84,#c8267a)}
+  .cat-alkaline{background:linear-gradient(160deg,#ff9d57,#c95b1c)}
+  .cat-transition{background:linear-gradient(160deg,#ffd84a,#c98b1a)}
+  .cat-postTM{background:linear-gradient(160deg,#9bd87b,#3e8a3c)}
+  .cat-metalloid{background:linear-gradient(160deg,#7cffb2,#1aa56a)}
+  .cat-nonmetal{background:linear-gradient(160deg,#66f0ff,#1c7fb8)}
+  .cat-halogen{background:linear-gradient(160deg,#a48bff,#5c34c9)}
+  .cat-noble{background:linear-gradient(160deg,#ff8ac6,#c12c8e)}
+  .cat-lanth{background:linear-gradient(160deg,#ffaee5,#a44ec2)}
+  .cat-actin{background:linear-gradient(160deg,#ff7aa6,#a4276b)}
+  .cat-unknown{background:linear-gradient(160deg,#5a5a8a,#2a2a4a)}
+
+  /* 깜빡이는 현재 문제 셀 */
+  .cell.active{
+    z-index:2;
+    border:2px solid var(--gold);
+    box-shadow:0 0 0 0 rgba(255,216,74,.9), 0 0 22px var(--gold);
+    animation: blink 0.6s steps(2) infinite;
+  }
+  @keyframes blink{
+    0%,100%{box-shadow:0 0 0 0 rgba(255,216,74,.9), 0 0 22px var(--gold); transform:scale(1.05)}
+    50%{box-shadow:0 0 0 6px rgba(255,216,74,0); transform:scale(1.0)}
+  }
+  .cell.active .num{color:#fff}
+  .cell.active .sym{color:#fff;text-shadow:0 0 8px var(--gold)}
+
+  /* 정답 시 채워지는 효과 */
+  @keyframes pop{
+    0%{transform:scale(.3) rotate(-12deg);filter:brightness(3) saturate(2)}
+    40%{transform:scale(1.5) rotate(8deg);filter:brightness(2.4) saturate(2)}
+    70%{transform:scale(0.95) rotate(-3deg);filter:brightness(1.4)}
+    100%{transform:scale(1) rotate(0);filter:brightness(1)}
+  }
+  .cell.justSolved{animation:pop .8s cubic-bezier(.2,1.4,.4,1)}
+  .cell.justSolved::before{
+    content:"";position:absolute;inset:-2px;border-radius:3px;pointer-events:none;
+    box-shadow:0 0 0 2px #fff, 0 0 18px 8px var(--gold), 0 0 32px 12px var(--pink);
+    animation: cellGlow .8s ease-out forwards;
+  }
+  @keyframes cellGlow{
+    0%{opacity:1; transform:scale(.6)}
+    60%{opacity:1; transform:scale(1.4)}
+    100%{opacity:0; transform:scale(2.2)}
+  }
+
+  /* 화면 전체 폭죽 레이어 */
+  .fxLayer{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden}
+  .fx-flash{position:absolute;inset:0;background:radial-gradient(circle at var(--fx-x,50%) var(--fx-y,50%), rgba(255,255,255,.95), rgba(255,79,163,.5) 30%, transparent 65%);
+    animation: fxFlash .55s ease-out forwards;}
+  @keyframes fxFlash{0%{opacity:0}15%{opacity:1}100%{opacity:0}}
+
+  .fx-ring{position:absolute;left:var(--fx-x,50%);top:var(--fx-y,50%);width:30px;height:30px;border-radius:50%;
+    border:6px solid var(--gold);transform:translate(-50%,-50%);
+    animation: fxRing .9s ease-out forwards;
+    box-shadow:0 0 30px var(--gold), 0 0 60px var(--pink), inset 0 0 30px #fff;
+  }
+  .fx-ring.r2{border-color:var(--pink);animation-delay:.08s;animation-duration:1s}
+  .fx-ring.r3{border-color:var(--cyan);animation-delay:.16s;animation-duration:1.1s}
+  @keyframes fxRing{
+    0%{width:20px;height:20px;opacity:1;border-width:8px}
+    100%{width:520px;height:520px;opacity:0;border-width:1px}
+  }
+
+  /* 빛줄기 (방사형 8가닥) */
+  .fx-rays{position:absolute;left:var(--fx-x,50%);top:var(--fx-y,50%);width:0;height:0;}
+  .fx-ray{position:absolute;left:0;top:0;width:6px;height:260px;
+    background:linear-gradient(180deg, rgba(255,255,255,1), rgba(255,216,74,.9) 30%, rgba(255,79,163,.6) 60%, transparent 100%);
+    transform-origin: 50% 0;
+    animation: fxRay .8s ease-out forwards;
+    filter: blur(.5px);
+  }
+  @keyframes fxRay{
+    0%{height:0;opacity:1}
+    50%{height:300px;opacity:1}
+    100%{height:340px;opacity:0}
+  }
+
+  /* 컨페티/별가루 */
+  .fx-particle{position:absolute;left:var(--fx-x,50%);top:var(--fx-y,50%);width:10px;height:10px;
+    transform:translate(-50%,-50%);
+    animation: fxParticle 1.2s ease-out forwards;
+  }
+  .fx-particle.star{background:transparent}
+  .fx-particle.star::before{content:"★";position:absolute;inset:0;color:var(--gold);font-size:14px;
+    text-shadow:0 0 8px #fff, 0 0 16px var(--gold);}
+  .fx-particle.dot{border-radius:50%;background:var(--pink);box-shadow:0 0 10px var(--pink)}
+  .fx-particle.dot.b{background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+  .fx-particle.dot.g{background:var(--gold);box-shadow:0 0 10px var(--gold)}
+  .fx-particle.dot.w{background:#fff;box-shadow:0 0 10px #fff}
+  @keyframes fxParticle{
+    0%{transform:translate(-50%,-50%) translate(0,0) scale(.4) rotate(0);opacity:1}
+    100%{transform:translate(-50%,-50%) translate(var(--dx,0),var(--dy,0)) scale(1.2) rotate(720deg);opacity:0}
+  }
+
+  /* 중앙 정답 팝업 */
+  .fx-popup{position:absolute;left:var(--fx-x,50%);top:var(--fx-y,50%);transform:translate(-50%,-50%);
+    z-index:3;text-align:center;color:#fff;font-weight:bold;letter-spacing:2px;
+    text-shadow:0 0 10px var(--gold), 0 0 20px var(--pink), 2px 2px 0 #4a0a72;
+    animation: fxPopup 1.4s ease-out forwards;pointer-events:none;
+  }
+  .fx-popup .fx-symbol{
+    display:block;font-size:clamp(72px, 16vw, 180px);line-height:.9;color:#ffd84a;
+    text-shadow:0 0 18px #fff, 0 0 36px #ffd84a, 7px 7px 0 #4a0a72;
+  }
+  .fx-popup .fx-name{
+    display:block;margin-top:12px;font-size:clamp(16px, 3vw, 34px);color:#fff;
+    text-shadow:0 0 12px #66f0ff, 3px 3px 0 #4a0a72;
+  }
+  .fx-popup .fx-label{
+    display:block;margin-top:8px;font-size:clamp(10px, 1.6vw, 16px);color:#7cffb2;
+  }
+  @keyframes fxPopup{
+    0%{opacity:0; transform:translate(-50%,-50%) scale(.4)}
+    18%{opacity:1; transform:translate(-50%,-50%) scale(1.18)}
+    72%{opacity:1; transform:translate(-50%,-50%) scale(1)}
+    100%{opacity:0; transform:translate(-50%,calc(-50% - 56px)) scale(.92)}
+  }
+
+  /* 화면 살짝 흔들림 */
+  @keyframes screenShake{0%,100%{transform:translate(0,0)}25%{transform:translate(-3px,2px)}50%{transform:translate(3px,-2px)}75%{transform:translate(-2px,-3px)}}
+  body.shake{animation: screenShake .35s}
+
+  /* === 순차 보어 효과 === */
+  /* 핵: 첫 0.2초 동안 등장 */
+  @keyframes seqNuc{0%{transform:scale(0);opacity:0}60%{transform:scale(1.4);opacity:1}100%{transform:scale(1);opacity:1}}
+  /* 껍질 링: 안쪽부터 차례대로 펼쳐짐 */
+  @keyframes seqShell{0%{transform:scale(.2);opacity:0;stroke-width:3}80%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:1;stroke-width:.6}}
+  /* 안쪽 껍질 전자 그룹 (한꺼번에 "촹") */
+  @keyframes seqInner{0%{transform:scale(0) rotate(-180deg);opacity:0;filter:brightness(3)}60%{transform:scale(1.3) rotate(20deg);opacity:1;filter:brightness(2)}100%{transform:scale(1) rotate(0);opacity:1;filter:brightness(1)}}
+  /* 최외각 전자 1개씩 (탕!) */
+  @keyframes seqOuter{0%{transform:scale(0);opacity:0;filter:drop-shadow(0 0 14px var(--electron-color,#ffd84a)) brightness(3)}40%{transform:scale(1.8);opacity:1}100%{transform:scale(1);opacity:1;filter:drop-shadow(0 0 4px var(--electron-color,#7cffb2)) brightness(1)}}
+
+  /* 콤보 카운터 */
+  .comboCount{
+    position:absolute;left:var(--cx,50%);top:var(--cy,50%);
+    transform:translate(-50%,-50%) scale(0);
+    font-family:"Press Start 2P","Galmuri11",monospace;
+    font-size:clamp(42px, 7vw, 92px);font-weight:bold;color:#ffd84a;
+    text-shadow:0 0 14px #ff4fa3, 0 0 28px #fff, 5px 5px 0 #4a0a72;
+    pointer-events:none;
+    animation: comboPop .42s cubic-bezier(.2,1.6,.4,1) forwards;
+    z-index:5;
+  }
+  .comboCount.final{
+    font-size:clamp(96px, 15vw, 190px);
+    color:#fff;
+    text-shadow:0 0 18px #fff, 0 0 38px #ffd84a, 0 0 62px #ff4fa3, 9px 9px 0 #4a0a72;
+    animation: comboFinalPop 1.35s cubic-bezier(.16,1.25,.2,1) forwards;
+    z-index:8;
+  }
+  @keyframes comboPop{
+    0%{transform:translate(-50%,-50%) scale(0) rotate(-25deg);opacity:0}
+    30%{transform:translate(-50%,-50%) scale(1.6) rotate(8deg);opacity:1}
+    70%{transform:translate(-50%,-50%) scale(1.0) rotate(-3deg);opacity:1}
+    100%{transform:translate(-50%,-50%) scale(0.8) rotate(0);opacity:0}
+  }
+  @keyframes comboFinalPop{
+    0%{transform:translate(-50%,-50%) scale(.15) rotate(-18deg);opacity:0;filter:brightness(3)}
+    18%{transform:translate(-50%,-50%) scale(1.55) rotate(6deg);opacity:1;filter:brightness(1.8)}
+    42%{transform:translate(-50%,-50%) scale(1.08) rotate(-2deg);opacity:1;filter:brightness(1.15)}
+    78%{transform:translate(-50%,-50%) scale(1) rotate(0);opacity:1;filter:brightness(1)}
+    100%{transform:translate(-50%,calc(-50% - 28px)) scale(.82) rotate(0);opacity:0;filter:brightness(1)}
+  }
+  /* 큰 폭발 보어 안의 전자배치 텍스트 */
+  .fx-cfg{
+    position:absolute;left:var(--fx-x,50%);top:calc(var(--fx-y,50%) + 200px);
+    transform:translate(-50%,-50%);
+    font-family:"JetBrains Mono","Consolas",monospace;
+    color:#7cffb2;font-size:14px;letter-spacing:.5px;
+    text-shadow:0 0 8px #7cffb2, 0 0 16px #ff4fa3;
+    background:rgba(10,3,34,.85);padding:6px 14px;border-radius:4px;
+    border:1px solid #3a1d6e;white-space:nowrap;
+    opacity:0;
+    animation: cfgFloat 1.6s ease-out forwards;
+  }
+  @keyframes cfgFloat{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}
+    20%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}
+    80%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+    100%{opacity:0;transform:translate(-50%,calc(-50% - 30px)) scale(1)}
+  }
+
+  /* 카드 안 보어 - 껍질별 라벨 (KLMN) */
+  .bohrSvg .shellLabel{font-family:monospace;font-size:5.5px;fill:#ff8ac6;font-weight:bold}
+
+  /* === 보어 모델 폭발 (순차 시퀀스) === */
+  .fx-bohr{position:absolute;left:var(--fx-x,50%);top:var(--fx-y,50%);width:340px;height:340px;
+    transform:translate(-50%,-50%) scale(1);opacity:0;
+    animation: bohrBurst 3.4s cubic-bezier(.2,1.4,.4,1) forwards;
+    pointer-events:none;
+  }
+  @keyframes bohrBurst{
+    0%{opacity:0; transform:translate(-50%,-50%) scale(.7)}
+    8%{opacity:1; transform:translate(-50%,-50%) scale(1)}
+    85%{opacity:1; transform:translate(-50%,-50%) scale(1)}
+    100%{opacity:0; transform:translate(-50%,-50%) scale(1.4)}
+  }
+  .fx-bohr svg{width:100%;height:100%;
+    filter: drop-shadow(0 0 20px #ff4fa3) drop-shadow(0 0 40px #ffd84a);
+  }
+  .fx-bohr .fxNuc{fill:url(#fxNucGrad)}
+  .fx-bohr .fxShell{fill:none;stroke:#fff;stroke-width:.6;opacity:.7}
+  .fx-bohr .fxE{fill:var(--electron-color,#7cffb2);filter:drop-shadow(0 0 4px var(--electron-color,#7cffb2))}
+  .fx-bohr .fxRotG{transform-origin:50px 50px}
+  .fx-bohr .fxRotG.rev{}
+  @keyframes fxRotShell{from{transform:rotate(0)} to{transform:rotate(540deg)}}
+
+  /* (사용 안함, A안 잔재) */
+  .fx-fullPanel{
+    position:fixed;left:50%;top:50%;
+    transform:translate(-50%,-50%);
+    z-index:42;display:grid;grid-template-columns:340px 280px;gap:18px;
+    background:rgba(10,3,34,.85);border:2px solid #3a1d6e;border-radius:12px;
+    padding:20px;
+    box-shadow:0 0 60px rgba(255,79,163,.5), inset 0 0 30px rgba(102,240,255,.1);
+    backdrop-filter:blur(4px);
+    opacity:0;
+    animation: fpIn 4.5s ease-out forwards;
+    pointer-events:none;
+  }
+  @keyframes fpIn{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}
+    5%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+    90%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+    100%{opacity:0;transform:translate(-50%,-50%) scale(1.05)}
+  }
+  @media (max-width:760px){
+    .fx-fullPanel{grid-template-columns:1fr;width:90vw;max-width:340px}
+  }
+
+  .fp-shell{position:relative;width:340px;height:340px}
+  .fp-shell svg{width:100%;height:100%;filter:drop-shadow(0 0 16px #ff4fa3)}
+  .fp-shell .fpNuc{fill:url(#fxNucGrad)}
+  .fp-shell .fpShell{fill:none;stroke:#66f0ff;stroke-width:.6;opacity:.8}
+  .fp-shell .fpE{fill:var(--electron-color,#7cffb2)}
+  .fp-shell .shellLabel{fill:#ffd84a;font-family:"Press Start 2P",monospace;font-size:5px}
+  .fp-shell .shellRotG{transform-origin:50px 50px;animation:fxRotShell 3.5s linear infinite}
+  .fp-shell .shellRotG.rev{animation-direction:reverse}
+
+  .fp-orbitals{display:flex;flex-direction:column;gap:8px;justify-content:center}
+  .fp-orbHead{font-size:11px;color:#ff8ac6;letter-spacing:1px;margin-bottom:2px}
+  .fp-row{display:flex;align-items:center;gap:6px;font-family:"JetBrains Mono",monospace}
+  .fp-row .fp-name{color:#a48bff;font-size:13px;min-width:24px;font-weight:bold}
+  .fp-boxes{display:flex;gap:2px}
+  .fp-box{
+    width:16px;height:16px;border:1.5px solid #3a1d6e;border-radius:2px;
+    background:#150236;display:flex;align-items:center;justify-content:center;
+    font-size:10px;color:#7a6ab8;line-height:1;
+    transition:all .25s;
+  }
+  .fp-box.filled{background:#ffd84a;border-color:#fff;color:#1a0533;
+    box-shadow:0 0 10px #ffd84a;transform:scale(1.15)}
+  .fp-row.glow .fp-name{color:#ffd84a;text-shadow:0 0 8px #ffd84a}
+
+  .fp-summary{
+    grid-column:1/-1;text-align:center;padding-top:10px;
+    border-top:1px dashed #3a1d6e;color:#fff;
+    font-size:13px;line-height:1.7;
+    opacity:0;animation:fpSumIn .5s 2.8s ease-out forwards;
+  }
+  .fp-summary b{color:#ffd84a;font-size:14px}
+  .fp-summary .tag{display:inline-block;background:linear-gradient(90deg,#ff4fa3,#a44ec2);
+    color:#fff;padding:3px 10px;border-radius:12px;font-size:11px;
+    margin-left:4px;letter-spacing:.5px;font-weight:bold}
+  @keyframes fpSumIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .fx-bohr svg{width:100%;height:100%;display:block;
+    filter: drop-shadow(0 0 20px #ff4fa3) drop-shadow(0 0 40px #ffd84a);
+  }
+  .fx-bohr .fxNuc{fill:url(#fxNucGrad)}
+  .fx-bohr .fxShell{fill:none;stroke:#fff;stroke-width:.6;opacity:.7}
+  .fx-bohr .fxE{fill:var(--electron-color,#7cffb2);filter:drop-shadow(0 0 4px var(--electron-color,#7cffb2))}
+  .fx-bohr .fxRotG{transform-origin:50px 50px;animation:fxRotShell 1.6s linear forwards}
+  .fx-bohr .fxRotG.rev{animation-direction:reverse}
+  @keyframes fxRotShell{from{transform:rotate(0)} to{transform:rotate(540deg)}}
+
+  /* 셀 안의 미니 보어 (오픈된 셀에 잔상으로 남음) */
+  .cell .miniBohr{position:absolute;inset:0;pointer-events:none;opacity:0;
+    transition: opacity .3s;
+  }
+  .cell.solved-glow .miniBohr{opacity:.45}
+  .cell .miniBohr svg{width:100%;height:100%}
+  .cell .miniBohr .mNuc{fill:#fff}
+  .cell .miniBohr .mShell{fill:none;stroke:rgba(255,255,255,.6);stroke-width:.5}
+  .cell .miniBohr .mE{fill:#7cffb2}
+  .cell .miniBohr .mRot{transform-origin:50% 50%;animation:miniSpin 6s linear infinite}
+  .cell .miniBohr .mRot.rev{animation-direction:reverse}
+  @keyframes miniSpin{to{transform:rotate(360deg)}}
+
+  /* 오답 흔들림 */
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+  .cell.wrong{animation:shake .35s}
+  .cell.retry{outline:2px dashed var(--red);outline-offset:-2px}
+
+  /* 댄스 캐릭터 영역 */
+  .danceCol{display:flex;flex-direction:column;gap:10px}
+  .danceBox{
+    background:#100728;border:3px solid #3a1d6e;border-radius:8px;
+    padding:6px 10px 4px;display:flex;flex-direction:column;align-items:center;
+    position:relative;overflow:hidden;
+  }
+  .danceBox h3{margin:0 0 2px;font-size:10px;color:var(--cyan)}
+  .floor{
+    width:100%;height:4px;background:repeating-linear-gradient(90deg,#2a1554 0 8px,#3a1d6e 8px 16px);
+    border-radius:3px;margin-top:0;
+  }
+
+  /* 주기율표 안에 들어간 댄스 영역 */
+  .danceBox.gridDance{
+    background:transparent;
+    border:0;
+    padding:0;
+    overflow:visible;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    z-index:3;
+  }
+  .danceBox.gridDance .stage{
+    height:100%;
+    width:100%;
+    align-items:flex-end;
+  }
+  /* 캐릭터 한 명만, 8프레임 스프라이트 시트 방식
+     stage는 그리드 셀 안 가용 영역만 사용, 그리드 바깥으로 절대 넘지 않음.
+     캐릭터는 셀 바닥 쪽에 가깝게 배치해서 머리가 위쪽 입력창/외곽선과 안 닿게. */
+  .stage{display:flex;align-items:flex-end;justify-content:center;height:100%;width:100%;margin:0;padding:0;overflow:visible;position:relative}
+  .danceBox.gridDance{overflow:visible}
+  .stage .charBox{margin-bottom:-6px}
+  .charBox{
+    position:relative;
+    background-repeat:no-repeat;
+    image-rendering:pixelated;
+    background-position: 0 0;
+  }
+  /* 기본은 정지. .charBox.dancing 일 때만 애니메이션 동작 */
+
+  /* 가로형 입력 패널 (주기율표 위) */
+  .inputPanel--top{
+    background:#100728;border:3px solid #3a1d6e;border-radius:8px;padding:10px 14px;
+    display:grid; grid-template-columns: auto 1fr auto; gap:14px; align-items:center;
+    margin-bottom:8px;
+  }
+  .qBlock{display:flex;flex-direction:column;justify-content:center;gap:2px}
+  .qBlock--mid{gap:4px}
+  .qBlock--right{min-width:160px;text-align:right}
+  .qLabel{font-size:9px;color:#b8a8ff;letter-spacing:1px}
+  .qNum{font-size:38px;color:var(--pink2);text-shadow:0 0 12px var(--pink);line-height:1;font-weight:bold}
+  .hintRow{font-size:13px;color:var(--cyan);letter-spacing:3px;min-height:16px;font-family:monospace}
+  .inputRow{display:flex;gap:6px;align-items:center}
+  .inputRow input{
+    flex:1;font-family:inherit;font-size:15px;padding:9px 10px;background:#1a0a3a;color:#fff;
+    border:2px solid #3a1d6e;border-radius:4px;outline:none;
+  }
+  .inputRow input:focus{border-color:var(--pink)}
+  .inputRow button{
+    font-family:inherit;font-size:11px;padding:9px 14px;background:var(--pink);color:#fff;
+    border:0;border-radius:4px;cursor:pointer;border-bottom:3px solid #a01e63;white-space:nowrap;
+  }
+  .inputRow button:active{transform:translateY(2px);border-bottom-width:1px}
+  .inputRow button.skip{background:#444;border-bottom-color:#222}
+  .inputRow button.ghint{background:#7cffb2;color:#0a2a14;border-bottom-color:#3a7a4a}
+
+  /* 족 힌트로 강조된 셀 */
+  .cell.groupHint{
+    animation: groupBlink 0.6s steps(2) infinite;
+    box-shadow: 0 0 0 3px #7cffb2, 0 0 18px #7cffb2;
+    z-index:2;
+  }
+  @keyframes groupBlink{0%,100%{filter:brightness(1.5)}50%{filter:brightness(0.7)}}
+  .feedback{font-size:10px;min-height:14px;line-height:1.4}
+  .feedback.ok{color:var(--green)}
+  .feedback.bad{color:var(--red)}
+  .feedback.info{color:var(--cyan)}
+  @media (max-width: 980px){
+    .inputPanel--top{grid-template-columns:1fr; text-align:left}
+    .qBlock--right{text-align:left;min-width:0}
+  }
+
+  /* 시작/엔딩 오버레이 */
+  .overlay{
+    position:fixed;inset:0;background:rgba(5,0,15,.92);
+    display:flex;align-items:center;justify-content:center;flex-direction:column;
+    z-index:50;padding:20px;text-align:center;
+  }
+  .overlay h1{font-size:26px;color:var(--pink2);text-shadow:3px 3px 0 #4a0a72,0 0 18px var(--pink);margin:0 0 10px}
+  .overlay p{color:var(--muted);max-width:600px;font-size:11px;line-height:1.7}
+  .overlay button{
+    margin-top:18px;font-family:inherit;font-size:14px;padding:14px 28px;background:var(--pink);
+    border:0;border-radius:6px;color:#fff;cursor:pointer;border-bottom:5px solid #a01e63;
+  }
+  .overlay button:active{transform:translateY(3px);border-bottom-width:2px}
+  /* 레벨 선택 */
+  .levelSelect{margin-top:16px;width:100%;max-width:760px}
+  .levelTitle{font-size:13px;color:var(--gold);margin-bottom:10px;text-align:center;letter-spacing:2px}
+  .levelGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  @media (max-width:880px){ .levelGrid{grid-template-columns:repeat(2,1fr)} }
+  .lvBtn{
+    margin:0;padding:14px 8px 10px;background:#1a0a3a;color:#fff;
+    border:2px solid #3a1d6e;border-radius:6px;cursor:pointer;
+    border-bottom:5px solid #2a1554;
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    transition:transform .1s, border-color .15s, background .15s;
+    font-family:inherit;
+  }
+  .lvBtn:hover{border-color:var(--pink);background:#2a0a4a;transform:translateY(-2px)}
+  .lvBtn:active{transform:translateY(2px);border-bottom-width:2px}
+  .lvBtn b{font-size:14px;color:var(--gold);letter-spacing:1px}
+  .lvBtn span{font-size:11px;color:#fff}
+  .lvBtn em{font-size:9px;color:#b8a8ff;font-style:normal;letter-spacing:.5px}
+
+  .legend{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px;font-size:9px}
+  .legend span{display:inline-flex;align-items:center;gap:4px;padding:3px 6px;border-radius:3px;background:#1a0a3a;border:1px solid #3a1d6e}
+  .legend i{width:10px;height:10px;display:inline-block;border-radius:2px}
+
+  /* 핵 폭발 */
+  .nuke{position:fixed;inset:0;z-index:60;pointer-events:none;display:none}
+  .nuke.active{display:block}
+  .flash{position:absolute;inset:0;background:#fff;opacity:0;animation:flash 2s ease-out forwards}
+  @keyframes flash{0%{opacity:0}10%{opacity:1}100%{opacity:0}}
+  .mushroom{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:0;height:0;
+    animation: grow 4s ease-out forwards;
+  }
+  @keyframes grow{
+    0%{width:0;height:0;opacity:0}
+    20%{opacity:1}
+    100%{width:1200px;height:1400px;opacity:1}
+  }
+  /* === 정보 카드 (우측, 주기율표 높이만큼) === */
+  .infoCard{
+    background:#0a0322; border:2px solid #3a1d6e; border-radius:8px;
+    padding:12px; font-size:12px; color:#e8e0ff; display:none;
+    box-shadow:0 0 22px rgba(255,79,163,.15) inset;
+  }
+  .infoCard.show{display:block; animation: cardIn .4s ease-out}
+  .infoCard.stageMode{border-color:#ffd84a;box-shadow:0 0 18px rgba(255,216,74,.3)}
+  .infoCard.stageMode .ic_secTitle{color:#ffd84a}
+  @keyframes cardIn{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:translateY(0)}}
+
+  /* 헤드: 카테고리 색 띠 + 큰 기호 */
+  .infoCard__head{
+    display:flex;align-items:center;gap:12px;margin-bottom:10px;
+    padding:10px;border-radius:6px;
+    background:linear-gradient(135deg, #2a0a4a, #1a0533);
+    border:1px solid #3a1d6e;
+  }
+  .ic_symBig{
+    font-size:42px;font-weight:bold;color:#ffd84a;
+    text-shadow:0 0 12px #ff4fa3, 2px 2px 0 #4a0a72;
+    min-width:60px;text-align:center;line-height:1;
+    font-family: "Press Start 2P", monospace;
+  }
+  .ic_meta{flex:1;min-width:0}
+  .ic_meta .ic_name{font-size:14px;color:#fff;line-height:1.3;font-weight:bold}
+  .ic_meta .ic_num{font-size:10px;color:#b8a8ff;margin-top:3px}
+  .ic_tags{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+  .tag{
+    display:inline-block;font-size:9px;padding:3px 7px;border-radius:10px;
+    background:#150236;color:#dcd0ff;letter-spacing:.5px;
+  }
+  .tag-cat{background:linear-gradient(90deg,#ff4fa3,#a44ec2);color:#fff;font-weight:bold}
+  .tag-state{background:#150236;border:1px solid #3a1d6e}
+
+  /* RPG 도감 대사 박스 (양피지 느낌) */
+  .ic_lore{
+    background:linear-gradient(135deg, #f5e8c4 0%, #e8d5a0 100%);
+    color:#2a1808;
+    border:3px solid #6b4a1f;
+    border-radius:6px;
+    padding:10px 12px 12px;
+    margin-bottom:12px;
+    position:relative;
+    box-shadow:0 4px 0 #3a2410, inset 0 0 0 1px #d4b67a;
+    font-family: "Cinzel", "Iowan Old Style", "Palatino", Georgia, serif;
+  }
+  .ic_lore::before{
+    content:"";position:absolute;top:-8px;left:14px;
+    width:0;height:0;border:8px solid transparent;border-top:0;border-bottom:10px solid #6b4a1f;
+  }
+  .ic_lore::after{
+    content:"";position:absolute;top:-5px;left:16px;
+    width:0;height:0;border:6px solid transparent;border-top:0;border-bottom:8px solid #f5e8c4;
+  }
+  .ic_loreSpeaker{
+    font-size:11px;font-weight:bold;color:#6b2a0e;
+    margin-bottom:6px;letter-spacing:.5px;
+    border-bottom:1px dashed #a07a3a;padding-bottom:4px;
+  }
+  .ic_loreSpeaker::before{content:"⚔️ ";}
+  .ic_loreQuote{
+    font-size:13px;line-height:1.6;color:#2a1808;
+    font-style:italic;font-weight:500;
+  }
+
+  /* 섹션 */
+  .ic_section{margin-bottom:12px}
+  .ic_secTitle{
+    font-size:10px;color:#ff8ac6;letter-spacing:1px;
+    margin-bottom:6px;font-weight:bold;
+  }
+
+  /* 수치 그리드 - 더 크게 */
+  .infoCard__grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+  .infoCard__grid > div{
+    background:#150236;border:1px solid #2a1554;border-radius:5px;
+    padding:6px 8px;transition:transform .15s;
+  }
+  .infoCard__grid > div:hover{transform:translateY(-1px);border-color:#ff4fa3}
+  .infoCard__grid span{
+    display:block;font-size:9px;color:#9a8acf;letter-spacing:.5px;
+    margin-bottom:3px;
+  }
+  .infoCard__grid b{font-size:13px;color:#fff;font-weight:bold}
+  /* 결정구조 셀: 작은 도식 + 라벨 */
+  #ic_xtal{display:flex;align-items:center;gap:6px}
+  #ic_xtal .xtalIcon{display:inline-flex;width:34px;height:28px;flex-shrink:0;
+    background:rgba(0,0,0,.3);border-radius:3px;padding:1px 2px;
+    box-shadow:inset 0 0 8px rgba(124,255,178,.15)}
+  #ic_xtal .xtalIcon svg{width:100%;height:100%}
+  #ic_xtal .xtalLabel{font-size:12px}
+
+  /* 카드 안 오비탈 박스 패널 (컴팩트) */
+  .ic_orbBoxes{display:flex;flex-direction:column;gap:3px;margin-bottom:0;
+    background:#0a1a14;border:1px solid #1a4a2a;border-radius:5px;padding:6px 8px}
+  .ic_orbBoxes .orbRow{display:flex;align-items:center;gap:5px;font-family:"JetBrains Mono",monospace}
+  .ic_orbBoxes .orbName{color:#a48bff;font-size:10px;min-width:22px;font-weight:bold}
+  .ic_orbBoxes .orbBoxList{display:flex;gap:1.5px;flex-wrap:wrap}
+  .ic_orbBoxes .orbBox{
+    width:9px;height:9px;border:1px solid #2a4a3a;border-radius:1.5px;
+    background:#0a0322;
+    transition:background .25s, border-color .25s, transform .15s;
+  }
+  .ic_orbBoxes .orbBox.f{
+    background:var(--electron-color,#7cffb2);border-color:#fff;
+    box-shadow:0 0 4px var(--electron-color,#7cffb2);
+  }
+  .ic_orbBoxes .orbCount{color:#7cffb2;font-size:9px;margin-left:4px}
+  .ic_orbBoxes .orbRow.exception .orbName::after{content:" ⚠";color:#ffd84a}
+
+  /* === 보어 모델 (큰 사이즈로) === */
+  .bohr{
+    display:flex;align-items:center;gap:10px;
+    background:radial-gradient(circle at center, #1a0533, #0a0322);
+    padding:10px;border-radius:6px;margin-bottom:12px;
+    border:1px solid #3a1d6e;
+  }
+  .bohrSvg{width:130px;height:130px;flex-shrink:0}
+  .bohrSvg .nucleus{fill:url(#nucGrad)}
+  .bohrSvg .shell{fill:none;stroke:rgba(255,138,198,.4);stroke-width:.6}
+  .bohrSvg .e{fill:var(--electron-color,#7cffb2);filter:drop-shadow(0 0 2px var(--electron-color,#7cffb2))}
+  .bohrSvg .nuctxt{fill:#fff;font-size:6px;text-anchor:middle;dominant-baseline:middle;font-family:monospace;font-weight:bold}
+  .bohrLegend{font-size:9px;color:#dcd0ff;line-height:1.6}
+  .bohrLegend b{color:#7cffb2}
+  .bohrSpin{animation:bohrSpin 8s linear infinite; transform-origin:50% 50%}
+  @keyframes bohrSpin{to{transform:rotate(360deg)}}
+
+  /* === hover 셀 툴팁 === */
+  .cellTip{
+    position:fixed; z-index:30; pointer-events:none;
+    background:#0a0322; border:2px solid #ff4fa3; border-radius:6px; padding:8px 10px;
+    font-size:10px; color:#dcd0ff; min-width:180px; max-width:240px;
+    box-shadow:0 0 20px rgba(255,79,163,.4);
+    opacity:0; transition:opacity .15s; line-height:1.5;
+  }
+  .cellTip.show{opacity:1}
+  .cellTip h4{margin:0 0 4px;font-size:12px;color:#ffd84a}
+  .cellTip table{width:100%;border-collapse:collapse;font-size:9px}
+  .cellTip td{padding:1px 4px}
+  .cellTip td:first-child{color:#7a6ab8;width:50%}
+  .cellTip td:last-child{color:#fff;text-align:right}
+  .cell{cursor:help}
+
+  .shockwave{position:absolute;left:50%;top:50%;width:20px;height:20px;border-radius:50%;
+    border:6px solid #ffd84a;transform:translate(-50%,-50%);
+    animation: shock 2.5s ease-out forwards;
+  }
+  @keyframes shock{
+    0%{width:20px;height:20px;opacity:1;border-width:8px}
+    100%{width:3000px;height:3000px;opacity:0;border-width:1px}
+  }
+
+  /* 여신 화면 */
+  .goddessWrap{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .goddessBox{position:relative; image-rendering:pixelated;
+    background-repeat:no-repeat; background-position:0 0;
+    animation: zerotwoSprite 1.0s steps(4) infinite;
+  }
+  .goddessNuke{position:absolute; left:-40px; top:60px; width:60px; height:60px;
+    border-radius:50%; background:radial-gradient(circle, #fff 10%, #7cffb2 40%, transparent 75%);
+    animation: pulse 1s ease-in-out infinite;
+  }
+  .clearText{font-size:34px;color:var(--gold);text-shadow:0 0 18px var(--pink),3px 3px 0 #4a0a72;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse{50%{transform:scale(1.05);text-shadow:0 0 30px var(--gold),3px 3px 0 #4a0a72}}
+
+  .credits{font-size:9px;color:#6a5a9a;text-align:center;margin-top:14px}
+</style>
+</head>
+<body>
+
+<div class="stars"></div>
+<div class="fxLayer" id="fxLayer"></div>
+
+<div class="app">
+  <header>
+    <div class="title">PERIODIC × ZERO TWO</div>
+    <div class="stats">
+      <div class="stat">진행 <b id="progress">0</b>/118</div>
+      <div class="stat">정답 <b id="okCount">0</b></div>
+      <div class="stat">오답 <b id="missCount">0</b></div>
+      <div class="stat">패스 <b id="passCount">0</b></div>
+      <div class="stat">⏱ <b id="timer">0:00</b></div>
+      <div class="stat" id="bestStat" style="display:none">🏆 <b id="bestRecord">--</b></div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div>
+      <!-- 주기율표 위 가로 입력 패널 (1주기 H,He와 1·2족 사이 빈 공간 활용) -->
+      <div class="inputPanel inputPanel--top">
+        <div class="qBlock">
+          <div class="qLabel">원자번호</div>
+          <div class="qNum" id="qNum">-</div>
+        </div>
+        <div class="qBlock qBlock--mid">
+          <div class="qLabel">원소 이름 (영문)</div>
+          <div class="inputRow">
+            <input id="answer" autocomplete="off" placeholder="예: hydrogen" />
+            <button id="submitBtn">제출</button>
+            <button id="groupBtn" class="ghint" title="같은 족 원소 강조">족힌트</button>
+            <button id="skipBtn" class="skip">패스</button>
+          </div>
+          <div class="hintRow" id="hintRow">&nbsp;</div>
+        </div>
+        <div class="qBlock qBlock--right">
+          <div class="feedback" id="feedback">&nbsp;</div>
+        </div>
+      </div>
+
+      <div class="grid" id="grid"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <!-- hover 툴팁 -->
+    <div class="cellTip" id="cellTip"></div>
+
+    <div class="danceCol">
+      <div class="infoCard" id="infoCard">
+        <!-- 헤드: 큰 기호 + 색 도트 + 이름/번호 -->
+        <div class="infoCard__head">
+          <div class="ic_symBig" id="ic_sym">-</div>
+          <div class="ic_meta">
+            <div class="ic_name" id="ic_name">-</div>
+            <div class="ic_num" id="ic_num">No.-</div>
+            <div class="ic_tags">
+              <span class="tag tag-cat" id="ic_cat">-</span>
+              <span class="tag tag-state" id="ic_state">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RPG 도감 대사 -->
+        <div class="ic_lore">
+          <div class="ic_loreSpeaker" id="ic_speaker">-</div>
+          <div class="ic_loreQuote" id="ic_quote">-</div>
+        </div>
+
+        <!-- 보어 다이어그램 (큰 시각화) -->
+        <div class="bohr">
+          <svg class="bohrSvg" id="bohrSvg" viewBox="0 0 100 100">
+            <defs>
+              <radialGradient id="nucGrad">
+                <stop offset="0%" stop-color="#ffd84a"/>
+                <stop offset="100%" stop-color="#ff4fa3"/>
+              </radialGradient>
+            </defs>
+          </svg>
+          <div class="bohrLegend" id="bohrLegend">-</div>
+        </div>
+
+        <!-- 전자배치 (보어 바로 밑) -->
+        <div class="ic_section">
+          <div class="ic_secTitle">⚛️ 전자배치 (오비탈)</div>
+          <div class="ic_orbBoxes" id="ic_orbBoxes"></div>
+        </div>
+
+        <!-- 핵심 수치 -->
+        <div class="ic_section">
+          <div class="ic_secTitle">📊 기본 수치</div>
+          <div class="infoCard__grid">
+            <div><span>원자량</span><b id="ic_mass">-</b></div>
+            <div><span>밀도</span><b id="ic_density">-</b></div>
+            <div><span>녹는점</span><b id="ic_melt">-</b></div>
+            <div><span>끓는점</span><b id="ic_boil">-</b></div>
+            <div><span>원자가</span><b id="ic_val">-</b></div>
+            <div><span>결정구조</span><b id="ic_xtal">-</b></div>
+          </div>
+        </div>
+
+        <!-- 고급 화학 수치 -->
+        <div class="ic_section">
+          <div class="ic_secTitle">⚗️ 화학 성질</div>
+          <div class="infoCard__grid">
+            <div><span>전기음성도</span><b id="ic_en">-</b></div>
+            <div><span>이온화에너지</span><b id="ic_ie">-</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="credits">made with 💖 for chemistry lovers</div>
+</div>
+
+<!-- 시작 화면 -->
+<div class="overlay" id="startOverlay">
+  <h1>주기율표 제로투 챌린지</h1>
+  <p>
+    도트 미소녀가 제로투를 추는 동안<br/>
+    원자번호에 해당하는 원소의 <b style="color:var(--gold)">영문 이름</b>을 입력해줘!<br/><br/>
+    힌트로 한 글자씩 공개, 3번 틀리면 정답 공개 후 패스.<br/>
+    틀렸던 문제는 <b style="color:var(--red)">연속 2번</b> 맞춰야 오픈돼.<br/><br/>
+    원하는 주기부터 시작할 수 있어. 이전 주기는 자동으로 채워져!<br/>
+    118개를 모두 채우면… 화학의 여신이 강림한다 ☢️
+  </p>
+  <div class="levelSelect">
+    <div class="levelTitle">🎯 시작 레벨 선택</div>
+    <label style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:11px;color:var(--cyan);margin-bottom:10px;cursor:pointer">
+      <input type="checkbox" id="hardModeToggle" /> 🔥 하드 모드 (문제당 30초)
+    </label>
+    <div class="levelGrid">
+      <button class="lvBtn" data-start="2"><b>LV.1</b><span>2주기부터</span><em>1주기 자동오픈 (2개)</em></button>
+      <button class="lvBtn" data-start="3"><b>LV.2</b><span>3주기부터</span><em>~2주기 자동오픈 (10개)</em></button>
+      <button class="lvBtn" data-start="4"><b>LV.3</b><span>4주기부터</span><em>~3주기 자동오픈 (18개)</em></button>
+      <button class="lvBtn" data-start="5"><b>LV.4</b><span>5주기부터</span><em>~4주기 자동오픈 (36개)</em></button>
+      <button class="lvBtn" data-start="6"><b>LV.5</b><span>6주기 본 그룹</span><em>~5주기 자동오픈 (54개)</em></button>
+      <button class="lvBtn" data-start="7"><b>LV.6</b><span>7주기 본 그룹</span><em>6주기 본 그룹까지 (71개)</em></button>
+      <button class="lvBtn" data-start="8"><b>LV.7</b><span>란타넘족만</span><em>본 그룹 전부 자동오픈 (88개)</em></button>
+      <button class="lvBtn" data-start="9"><b>LV.8</b><span>악티늄족만</span><em>란타넘족까지 자동오픈 (103개)</em></button>
+    </div>
+  </div>
+</div>
+
+<!-- 엔딩 화면 -->
+<div class="overlay" id="endOverlay" style="display:none">
+  <div class="goddessWrap">
+    <div class="clearText">★ ALL CLEAR ★</div>
+    <div class="goddessBox" id="goddessBox"><div class="goddessNuke"></div></div>
+    <p style="color:var(--pink2);font-size:13px">화학의 여신이 강림했다…</p>
+    <div id="endRecord"></div>
+    <button id="nukeBtn">☢ 핵 발사 ☢</button>
+    <button id="reviewBtn" style="background:#7cffb2;color:#0a2a14;border-bottom-color:#3a7a4a;display:none">📚 약점 복습 모드</button>
+    <button id="restartBtn" style="background:#444;border-bottom-color:#222">다시 도전</button>
+  </div>
+</div>
+
+<!-- 핵 폭발 오버레이 -->
+<div class="nuke" id="nuke">
+  <div class="flash"></div>
+  <div class="shockwave"></div>
+  <svg class="mushroom" viewBox="0 0 200 240" preserveAspectRatio="xMidYMax meet">
+    <!-- stem -->
+    <ellipse cx="100" cy="220" rx="40" ry="20" fill="#3a2d10"/>
+    <rect x="80" y="120" width="40" height="100" fill="#7a5a20"/>
+    <ellipse cx="100" cy="120" rx="30" ry="15" fill="#a8821e"/>
+    <!-- cloud layers -->
+    <circle cx="100" cy="80" r="60" fill="#ffd84a"/>
+    <circle cx="60" cy="90" r="35" fill="#ff8a3c"/>
+    <circle cx="140" cy="90" r="35" fill="#ff8a3c"/>
+    <circle cx="100" cy="50" r="45" fill="#fff8c8"/>
+    <circle cx="70" cy="60" r="25" fill="#ff5c5c"/>
+    <circle cx="130" cy="60" r="25" fill="#ff5c5c"/>
+    <circle cx="100" cy="30" r="28" fill="#ffd84a"/>
+  </svg>
+</div>
+
+<script>
+/* =========================
+   118 ELEMENTS DATA
+   ========================= */
+// [num, symbol, en, ko, group(1-18 or 'L'/'A'), period, category]
+const ELEMENTS = [
+[1,"H","Hydrogen","수소",1,1,"nonmetal"],
+[2,"He","Helium","헬륨",18,1,"noble"],
+[3,"Li","Lithium","리튬",1,2,"alkali"],
+[4,"Be","Beryllium","베릴륨",2,2,"alkaline"],
+[5,"B","Boron","붕소",13,2,"metalloid"],
+[6,"C","Carbon","탄소",14,2,"nonmetal"],
+[7,"N","Nitrogen","질소",15,2,"nonmetal"],
+[8,"O","Oxygen","산소",16,2,"nonmetal"],
+[9,"F","Fluorine","플루오린",17,2,"halogen"],
+[10,"Ne","Neon","네온",18,2,"noble"],
+[11,"Na","Sodium","소듐",1,3,"alkali"],
+[12,"Mg","Magnesium","마그네슘",2,3,"alkaline"],
+[13,"Al","Aluminum","알루미늄",13,3,"postTM"],
+[14,"Si","Silicon","규소",14,3,"metalloid"],
+[15,"P","Phosphorus","인",15,3,"nonmetal"],
+[16,"S","Sulfur","황",16,3,"nonmetal"],
+[17,"Cl","Chlorine","염소",17,3,"halogen"],
+[18,"Ar","Argon","아르곤",18,3,"noble"],
+[19,"K","Potassium","포타슘",1,4,"alkali"],
+[20,"Ca","Calcium","칼슘",2,4,"alkaline"],
+[21,"Sc","Scandium","스칸듐",3,4,"transition"],
+[22,"Ti","Titanium","타이타늄",4,4,"transition"],
+[23,"V","Vanadium","바나듐",5,4,"transition"],
+[24,"Cr","Chromium","크로뮴",6,4,"transition"],
+[25,"Mn","Manganese","망가니즈",7,4,"transition"],
+[26,"Fe","Iron","철",8,4,"transition"],
+[27,"Co","Cobalt","코발트",9,4,"transition"],
+[28,"Ni","Nickel","니켈",10,4,"transition"],
+[29,"Cu","Copper","구리",11,4,"transition"],
+[30,"Zn","Zinc","아연",12,4,"transition"],
+[31,"Ga","Gallium","갈륨",13,4,"postTM"],
+[32,"Ge","Germanium","저마늄",14,4,"metalloid"],
+[33,"As","Arsenic","비소",15,4,"metalloid"],
+[34,"Se","Selenium","셀레늄",16,4,"nonmetal"],
+[35,"Br","Bromine","브로민",17,4,"halogen"],
+[36,"Kr","Krypton","크립톤",18,4,"noble"],
+[37,"Rb","Rubidium","루비듐",1,5,"alkali"],
+[38,"Sr","Strontium","스트론튬",2,5,"alkaline"],
+[39,"Y","Yttrium","이트륨",3,5,"transition"],
+[40,"Zr","Zirconium","지르코늄",4,5,"transition"],
+[41,"Nb","Niobium","나이오븀",5,5,"transition"],
+[42,"Mo","Molybdenum","몰리브데넘",6,5,"transition"],
+[43,"Tc","Technetium","테크네튬",7,5,"transition"],
+[44,"Ru","Ruthenium","루테늄",8,5,"transition"],
+[45,"Rh","Rhodium","로듐",9,5,"transition"],
+[46,"Pd","Palladium","팔라듐",10,5,"transition"],
+[47,"Ag","Silver","은",11,5,"transition"],
+[48,"Cd","Cadmium","카드뮴",12,5,"transition"],
+[49,"In","Indium","인듐",13,5,"postTM"],
+[50,"Sn","Tin","주석",14,5,"postTM"],
+[51,"Sb","Antimony","안티모니",15,5,"metalloid"],
+[52,"Te","Tellurium","텔루륨",16,5,"metalloid"],
+[53,"I","Iodine","아이오딘",17,5,"halogen"],
+[54,"Xe","Xenon","제논",18,5,"noble"],
+[55,"Cs","Cesium","세슘",1,6,"alkali"],
+[56,"Ba","Barium","바륨",2,6,"alkaline"],
+[57,"La","Lanthanum","란타넘","L",6,"lanth"],
+[58,"Ce","Cerium","세륨","L",6,"lanth"],
+[59,"Pr","Praseodymium","프라세오디뮴","L",6,"lanth"],
+[60,"Nd","Neodymium","네오디뮴","L",6,"lanth"],
+[61,"Pm","Promethium","프로메튬","L",6,"lanth"],
+[62,"Sm","Samarium","사마륨","L",6,"lanth"],
+[63,"Eu","Europium","유로퓸","L",6,"lanth"],
+[64,"Gd","Gadolinium","가돌리늄","L",6,"lanth"],
+[65,"Tb","Terbium","터븀","L",6,"lanth"],
+[66,"Dy","Dysprosium","디스프로슘","L",6,"lanth"],
+[67,"Ho","Holmium","홀뮴","L",6,"lanth"],
+[68,"Er","Erbium","어븀","L",6,"lanth"],
+[69,"Tm","Thulium","툴륨","L",6,"lanth"],
+[70,"Yb","Ytterbium","이터븀","L",6,"lanth"],
+[71,"Lu","Lutetium","루테튬","L",6,"lanth"],
+[72,"Hf","Hafnium","하프늄",4,6,"transition"],
+[73,"Ta","Tantalum","탄탈럼",5,6,"transition"],
+[74,"W","Tungsten","텅스텐",6,6,"transition"],
+[75,"Re","Rhenium","레늄",7,6,"transition"],
+[76,"Os","Osmium","오스뮴",8,6,"transition"],
+[77,"Ir","Iridium","이리듐",9,6,"transition"],
+[78,"Pt","Platinum","백금",10,6,"transition"],
+[79,"Au","Gold","금",11,6,"transition"],
+[80,"Hg","Mercury","수은",12,6,"transition"],
+[81,"Tl","Thallium","탈륨",13,6,"postTM"],
+[82,"Pb","Lead","납",14,6,"postTM"],
+[83,"Bi","Bismuth","비스무트",15,6,"postTM"],
+[84,"Po","Polonium","폴로늄",16,6,"metalloid"],
+[85,"At","Astatine","아스타틴",17,6,"halogen"],
+[86,"Rn","Radon","라돈",18,6,"noble"],
+[87,"Fr","Francium","프랑슘",1,7,"alkali"],
+[88,"Ra","Radium","라듐",2,7,"alkaline"],
+[89,"Ac","Actinium","악티늄","A",7,"actin"],
+[90,"Th","Thorium","토륨","A",7,"actin"],
+[91,"Pa","Protactinium","프로트악티늄","A",7,"actin"],
+[92,"U","Uranium","우라늄","A",7,"actin"],
+[93,"Np","Neptunium","넵투늄","A",7,"actin"],
+[94,"Pu","Plutonium","플루토늄","A",7,"actin"],
+[95,"Am","Americium","아메리슘","A",7,"actin"],
+[96,"Cm","Curium","퀴륨","A",7,"actin"],
+[97,"Bk","Berkelium","버클륨","A",7,"actin"],
+[98,"Cf","Californium","캘리포늄","A",7,"actin"],
+[99,"Es","Einsteinium","아인슈타이늄","A",7,"actin"],
+[100,"Fm","Fermium","페르뮴","A",7,"actin"],
+[101,"Md","Mendelevium","멘델레븀","A",7,"actin"],
+[102,"No","Nobelium","노벨륨","A",7,"actin"],
+[103,"Lr","Lawrencium","로렌슘","A",7,"actin"],
+[104,"Rf","Rutherfordium","러더포듐",4,7,"transition"],
+[105,"Db","Dubnium","더브늄",5,7,"transition"],
+[106,"Sg","Seaborgium","시보귬",6,7,"transition"],
+[107,"Bh","Bohrium","보륨",7,7,"transition"],
+[108,"Hs","Hassium","하슘",8,7,"transition"],
+[109,"Mt","Meitnerium","마이트너륨",9,7,"unknown"],
+[110,"Ds","Darmstadtium","다름슈타튬",10,7,"unknown"],
+[111,"Rg","Roentgenium","뢴트게늄",11,7,"unknown"],
+[112,"Cn","Copernicium","코페르니슘",12,7,"transition"],
+[113,"Nh","Nihonium","니호늄",13,7,"unknown"],
+[114,"Fl","Flerovium","플레로븀",14,7,"unknown"],
+[115,"Mc","Moscovium","모스코븀",15,7,"unknown"],
+[116,"Lv","Livermorium","리버모륨",16,7,"unknown"],
+[117,"Ts","Tennessine","테네신",17,7,"unknown"],
+[118,"Og","Oganesson","오가네손",18,7,"noble"],
+];
+
+/* === 추가 화학 데이터 (원자량/밀도/녹는점/끓는점/원자가) ===
+   값은 일반적 표준 (단위: g/mol, g/cm³, °C, °C). 일부 인공원소는 알려진 값 없음(N/A) */
+const DETAILS = {
+  1:[1.008,0.00009,-259,-253,1], 2:[4.0026,0.000179,-272,-269,0],
+  3:[6.94,0.534,181,1342,1], 4:[9.0122,1.85,1287,2470,2],
+  5:[10.81,2.34,2076,3927,3], 6:[12.011,2.267,3550,4827,4],
+  7:[14.007,0.001251,-210,-196,3], 8:[15.999,0.001429,-218,-183,2],
+  9:[18.998,0.001696,-220,-188,1], 10:[20.180,0.0009,-249,-246,0],
+  11:[22.990,0.971,98,883,1], 12:[24.305,1.738,650,1090,2],
+  13:[26.982,2.70,660,2467,3], 14:[28.085,2.3296,1410,2355,4],
+  15:[30.974,1.82,44,280,5], 16:[32.06,2.067,113,445,2],
+  17:[35.45,0.003214,-101,-34,1], 18:[39.948,0.001784,-189,-186,0],
+  19:[39.098,0.862,64,759,1], 20:[40.078,1.55,842,1484,2],
+  21:[44.956,2.989,1541,2836,3], 22:[47.867,4.54,1668,3287,4],
+  23:[50.942,6.11,1910,3407,5], 24:[51.996,7.15,1907,2671,3],
+  25:[54.938,7.43,1246,2061,2], 26:[55.845,7.874,1538,2861,3],
+  27:[58.933,8.86,1495,2927,2], 28:[58.693,8.912,1455,2913,2],
+  29:[63.546,8.96,1085,2562,2], 30:[65.38,7.134,420,907,2],
+  31:[69.723,5.91,30,2204,3], 32:[72.630,5.323,938,2833,4],
+  33:[74.922,5.776,817,614,3], 34:[78.971,4.809,221,685,2],
+  35:[79.904,3.122,-7,59,1], 36:[83.798,0.003733,-157,-153,0],
+  37:[85.468,1.532,39,688,1], 38:[87.62,2.64,777,1382,2],
+  39:[88.906,4.469,1526,3336,3], 40:[91.224,6.506,1855,4377,4],
+  41:[92.906,8.57,2477,4744,5], 42:[95.95,10.22,2623,4639,6],
+  43:[98,11.5,2157,4265,7], 44:[101.07,12.37,2334,4150,3],
+  45:[102.91,12.41,1964,3695,3], 46:[106.42,12.02,1554,2963,2],
+  47:[107.87,10.501,962,2162,1], 48:[112.41,8.69,321,767,2],
+  49:[114.82,7.31,156,2072,3], 50:[118.71,7.287,232,2602,4],
+  51:[121.76,6.685,630,1587,3], 52:[127.60,6.232,449,988,2],
+  53:[126.90,4.93,114,184,1], 54:[131.29,0.005887,-112,-108,0],
+  55:[132.91,1.873,28,671,1], 56:[137.33,3.62,727,1845,2],
+  57:[138.91,6.145,920,3464,3], 58:[140.12,6.770,795,3443,3],
+  59:[140.91,6.773,935,3520,3], 60:[144.24,7.007,1024,3074,3],
+  61:[145,7.26,1042,3000,3], 62:[150.36,7.52,1072,1794,3],
+  63:[151.96,5.243,822,1529,3], 64:[157.25,7.895,1313,3273,3],
+  65:[158.93,8.229,1356,3230,3], 66:[162.50,8.55,1412,2567,3],
+  67:[164.93,8.795,1474,2700,3], 68:[167.26,9.066,1529,2868,3],
+  69:[168.93,9.321,1545,1950,3], 70:[173.04,6.965,819,1196,3],
+  71:[174.97,9.84,1663,3402,3], 72:[178.49,13.31,2233,4603,4],
+  73:[180.95,16.654,3017,5458,5], 74:[183.84,19.25,3422,5555,6],
+  75:[186.21,21.02,3186,5596,7], 76:[190.23,22.61,3033,5012,4],
+  77:[192.22,22.56,2466,4428,3], 78:[195.08,21.46,1768,3825,2],
+  79:[196.97,19.282,1064,2856,3], 80:[200.59,13.5336,-39,357,2],
+  81:[204.38,11.85,304,1473,3], 82:[207.2,11.342,327,1749,2],
+  83:[208.98,9.807,271,1564,3], 84:[209,9.32,254,962,4],
+  85:[210,7,302,337,1], 86:[222,0.00973,-71,-62,0],
+  87:[223,1.87,27,677,1], 88:[226,5.5,696,1737,2],
+  89:[227,10.07,1051,3198,3], 90:[232.04,11.72,1750,4788,4],
+  91:[231.04,15.37,1568,4027,5], 92:[238.03,18.95,1135,4131,6],
+  93:[237,20.45,644,3902,5], 94:[244,19.84,640,3228,4],
+  95:[243,13.69,1176,2011,3], 96:[247,13.51,1340,3110,3],
+  97:[247,14.78,986,710,3], 98:[251,15.1,900,1470,3],
+  99:[252,8.84,860,996,3], 100:[257,9.7,1527,null,3],
+  101:[258,10.3,827,null,3], 102:[259,9.9,827,null,2],
+  103:[266,16,1627,null,3], 104:[267,23.2,2100,5500,4],
+  105:[268,29,null,null,5], 106:[269,35,null,null,6],
+  107:[270,37.1,null,null,7], 108:[277,40.7,null,null,4],
+  109:[278,37.4,null,null,1], 110:[281,34.8,null,null,1],
+  111:[282,28.7,null,null,1], 112:[285,23.7,null,null,2],
+  113:[286,16,427,null,1], 114:[289,14,null,null,2],
+  115:[290,13.5,400,null,1], 116:[293,12.9,null,null,2],
+  117:[294,7.2,null,null,1], 118:[294,5,null,null,0],
+};
+
+/* === 추가 화학/물성 데이터 ===
+   key: [상태(s/l/g), 색hex, 전기음성도(폴링), 1차이온화E(kJ/mol), 결정구조, 한줄소개]
+   상태/색은 표준 상태(25°C). 전기음성도/이온화E는 일반값. */
+const EXTRA = {
+1:['g','#bff7ff',2.20,1312,'육각','우주에서 가장 흔한 원소. 별의 연료'],
+2:['g','#fff2c4',null,2372,'면심','풍선·MRI 냉각재. 절대 반응 안 함'],
+3:['s','#c0c0c0',0.98,520,'체심','리튬이온 배터리의 핵심'],
+4:['s','#a0a0a0',1.57,899,'육각','독성. 우주왕복선 거울에 쓰임'],
+5:['s','#b59060',2.04,801,'능면','붕사·내열유리(파이렉스) 원료'],
+6:['s','#1a1a1a',2.55,1086,'다이아/흑연','모든 생명체의 뼈대. 다이아몬드'],
+7:['g','#7ec8ff',3.04,1402,'육각','공기의 78%. 단백질 구성요소'],
+8:['g','#7ec8ff',3.44,1314,'단순입방','호흡·연소의 필수. 지각의 47%'],
+9:['g','#d4ff7e',3.98,1681,'단사','가장 강한 산화제. 치약 성분'],
+10:['g','#ff8acf',null,2081,'면심','네온사인의 그 빨간 빛'],
+11:['s','#dadada',0.93,496,'체심','소금(NaCl)을 이루는 금속'],
+12:['s','#cfcfcf',1.31,738,'육각','엽록소의 중심. 폭죽의 흰빛'],
+13:['s','#d6d6d6',1.61,577,'면심','지각에서 가장 흔한 금속. 캔'],
+14:['s','#7a8a99',1.90,786,'다이아','반도체의 왕. 컴퓨터 칩'],
+15:['s','#ffe066',2.19,1011,'단사','성냥·DNA·뼈의 구성성분'],
+16:['s','#ffd84a',2.58,1000,'사방','화약·고무가황·황산 원료'],
+17:['g','#cfff7e',3.16,1251,'사방','수영장 소독·표백제'],
+18:['g','#ff8acf',null,1521,'면심','용접 보호가스. 비활성'],
+19:['s','#dadada',0.82,419,'체심','바나나의 그 칼륨. 비료 핵심'],
+20:['s','#e0e0e0',1.00,590,'면심','뼈와 치아의 주성분'],
+21:['s','#bdbdbd',1.36,633,'육각','초경량 자전거·항공 부품'],
+22:['s','#a8a8a8',1.54,659,'육각','임플란트·항공기 합금'],
+23:['s','#a8a8a8',1.63,651,'체심','강철 강화제. 배터리 소재'],
+24:['s','#9aafb8',1.66,653,'체심','크롬도금. 스테인리스의 광택'],
+25:['s','#9a9a9a',1.55,717,'복잡','강철·건전지의 망간'],
+26:['s','#a09080',1.83,762,'체심','지구 핵의 주성분. 적혈구'],
+27:['s','#9aa0b8',1.88,760,'육각','파란 도자기·자석'],
+28:['s','#c0c0c0',1.91,737,'면심','동전·내식성 합금'],
+29:['s','#d68a4d',1.90,745,'면심','전선의 황제. 적색 금속'],
+30:['s','#bfc4c8',1.65,906,'육각','아연도금·황동'],
+31:['s','#b8b8b8',1.81,579,'사방','LED·반도체 첨가제'],
+32:['s','#7a8a99',2.01,762,'다이아','적외선 광학·반도체'],
+33:['s','#666',2.18,944,'능면','독약의 대명사. 반도체 도핑'],
+34:['s','#444',2.55,941,'육각','복사기 드럼·태양전지'],
+35:['l','#a0381e',2.96,1140,'사방','상온 액체 비금속(둘 뿐!)'],
+36:['g','#ff8acf',3.00,1351,'면심','자동차 헤드램프 가스'],
+37:['s','#dadada',0.82,403,'체심','원자시계의 핵심'],
+38:['s','#bdbdbd',0.95,549,'면심','폭죽의 붉은 빛'],
+39:['s','#bdbdbd',1.22,600,'육각','컬러TV 빨강 인광체'],
+40:['s','#9aaeb8',1.33,640,'육각','원자로 연료봉 피복'],
+41:['s','#a8a8a8',1.6,652,'체심','초전도 자석'],
+42:['s','#a8a8a8',2.16,684,'체심','초고온 합금. 윤활제'],
+43:['s','#a8a8a8',1.9,702,'육각','최초의 인공 원소. 의료영상'],
+44:['s','#a8a8a8',2.2,710,'육각','만년필 펜촉의 단단함'],
+45:['s','#c0c0c0',2.28,720,'면심','촉매 변환기. 가장 비싼 금속 중 하나'],
+46:['s','#c8c8c8',2.20,804,'면심','수소 저장·촉매'],
+47:['s','#dadada',1.93,731,'면심','은. 사진·전기 최고 도체'],
+48:['s','#bdbdbd',1.69,868,'육각','니카드 배터리. 독성'],
+49:['s','#dadada',1.78,558,'사정','터치스크린 ITO'],
+50:['s','#c0c0c0',1.96,709,'정방','주석. 청동의 절반'],
+51:['s','#a8a8a8',2.05,834,'능면','반도체·납축전지 강화'],
+52:['s','#9a9a9a',2.1,869,'육각','광디스크·반도체'],
+53:['s','#7a4488',2.66,1008,'사방','갑상선 호르몬·소독'],
+54:['g','#ff8acf',2.6,1170,'면심','자동차 HID 헤드라이트'],
+55:['s','#e6c84a',0.79,376,'체심','원자시계의 1초 정의'],
+56:['s','#bdbdbd',0.89,503,'체심','X선 조영제. 폭죽의 녹색'],
+57:['s','#bdbdbd',1.10,538,'육각','석유 정제 촉매'],
+58:['s','#bdbdbd',1.12,534,'면심','촉매·라이터 부싯돌'],
+59:['s','#bdbdbd',1.13,527,'육각','강력한 영구자석'],
+60:['s','#bdbdbd',1.14,533,'육각','네오디뮴 자석. 가장 강한 자석'],
+61:['s','#bdbdbd',1.13,540,'육각','자연계엔 거의 없음(방사성)'],
+62:['s','#bdbdbd',1.17,545,'능면','사마륨 자석'],
+63:['s','#bdbdbd',1.2,547,'체심','TV 빨강 인광체'],
+64:['s','#bdbdbd',1.20,593,'육각','MRI 조영제'],
+65:['s','#bdbdbd',1.20,565,'육각','녹색 인광체'],
+66:['s','#bdbdbd',1.22,573,'육각','네오디뮴 자석 첨가제'],
+67:['s','#bdbdbd',1.23,581,'육각','강한 자기장 응용'],
+68:['s','#bdbdbd',1.24,589,'육각','광섬유 증폭기'],
+69:['s','#bdbdbd',1.25,597,'육각','휴대용 X선 장치'],
+70:['s','#bdbdbd',1.10,603,'면심','광섬유·결정 격자 도펀트'],
+71:['s','#bdbdbd',1.27,524,'육각','PET 스캔 검출기'],
+72:['s','#9aaeb8',1.30,659,'육각','원자로 제어봉'],
+73:['s','#a8a8a8',1.50,761,'체심','전자기기 콘덴서'],
+74:['s','#a8a8a8',2.36,770,'체심','텅스텐. 가장 높은 녹는점'],
+75:['s','#a8a8a8',1.9,760,'육각','촉매·가장 무거운 금속 중 하나'],
+76:['s','#9aaeb8',2.2,840,'육각','오스뮴. 가장 밀도 큰 원소'],
+77:['s','#dadada',2.20,880,'면심','매우 단단·내식성'],
+78:['s','#dadada',2.28,870,'면심','백금. 촉매·보석'],
+79:['s','#ffd84a',2.54,890,'면심','금. 부의 상징'],
+80:['l','#bdbdbd',2.00,1007,'능면','수은. 상온 액체 금속'],
+81:['s','#bdbdbd',1.62,589,'육각','쥐약. 매우 독성'],
+82:['s','#9a9a9a',2.33,716,'면심','납. 방사선 차폐'],
+83:['s','#cfa9c8',2.02,703,'능면','펩토비스몰의 그 비스무트'],
+84:['s','#a8a8a8',2.00,812,'단순입방','퀴리부인 발견. 매우 위험'],
+85:['s','#444',2.2,890,'?','지구상 가장 희귀'],
+86:['g','#ff8acf',2.2,1037,'면심','지하실 라돈 가스'],
+87:['s','#bdbdbd',0.7,380,'체심','가장 무거운 알칼리금속(매우 희귀)'],
+88:['s','#dadada',0.9,509,'체심','퀴리 부부가 발견. 야광 페인트'],
+89:['s','#bdbdbd',1.10,499,'면심','악티늄족 시작. 강한 방사선'],
+90:['s','#bdbdbd',1.30,587,'면심','잠재적 핵연료'],
+91:['s','#bdbdbd',1.50,568,'정방','매우 희귀·방사성'],
+92:['s','#a8a8a8',1.38,598,'사방','원자력 발전·핵폭탄'],
+93:['s','#a8a8a8',1.36,605,'사방','핵폐기물에서 발견'],
+94:['s','#a8a8a8',1.28,585,'단사','핵무기·우주선 RTG'],
+95:['s','#a8a8a8',1.13,578,'육각','연기탐지기 센서'],
+96:['s','#a8a8a8',1.28,581,'육각','우주선 RTG 전원'],
+97:['s','#a8a8a8',1.30,601,'육각','연구용 인공원소'],
+98:['s','#a8a8a8',1.30,608,'육각','중성자원'],
+99:['s','#a8a8a8',1.30,619,'면심','수소폭탄 실험에서 발견'],
+100:['s','#a8a8a8',1.30,627,'?','매우 짧은 반감기'],
+101:['s','#a8a8a8',1.30,635,'?','멘델레예프 기념'],
+102:['s','#a8a8a8',1.30,642,'?','노벨연구소 명명'],
+103:['s','#a8a8a8',1.30,470,'?','악티늄족의 마지막'],
+104:['s','#a8a8a8',null,580,'?','초중원소. 수초 만에 붕괴'],
+105:['s','#a8a8a8',null,665,'?','수초 만에 붕괴'],
+106:['s','#a8a8a8',null,757,'?','시보그 박사 기념'],
+107:['s','#a8a8a8',null,740,'?','보어 기념'],
+108:['s','#a8a8a8',null,730,'?','독일 헤센주 명명'],
+109:['s','#a8a8a8',null,800,'?','마이트너 기념'],
+110:['s','#a8a8a8',null,960,'?','다름슈타트시 명명'],
+111:['s','#a8a8a8',null,1020,'?','뢴트겐 기념'],
+112:['s','#a8a8a8',null,1155,'?','코페르니쿠스 기념'],
+113:['s','#a8a8a8',null,704,'?','일본이 발견. 니혼=일본'],
+114:['s','#a8a8a8',null,832,'?','플레로프 연구소 기념'],
+115:['s','#a8a8a8',null,538,'?','모스크바 기념'],
+116:['s','#a8a8a8',null,665,'?','리버모어 연구소 기념'],
+117:['s','#a8a8a8',null,742,'?','테네시주 명명'],
+118:['g','#ff8acf',null,839,'?','가장 마지막 원소. 비활성기체'],
+};
+/* === RPG 도감 대사 === [발견자(년도), 대사] */
+const LORE = {
+1:['헨리 캐번디시 / Henry Cavendish (1766)','"불꽃 속에서 태어나 물이 되어 사라지는 가장 가벼운 영혼... 별들은 모두 이 아이로 빛난다네."'],
+2:['얀센 & 로키어 / Janssen & Lockyer (1868)','"이건 지구에 없는 원소요. 태양의 빛 속에서만 발견되었지... 그래서 이름도 \'태양(헬리오스)\'."'],
+3:['아르프베드손 / Johan August Arfwedson (1817)','"돌(lithos)에서 캐낸 가장 가벼운 금속이오. 지금은 모든 이의 주머니에서 잠들어 있지... 배터리라는 이름으로."'],
+4:['보클랭 / Louis-Nicolas Vauquelin (1798)','"에메랄드의 영혼이오. 가볍고 단단하지만, 그 가루는 폐를 갉아먹는 독... 다루는 자는 두려워해야 하오."'],
+5:['게이뤼삭 & 다비 / Gay-Lussac & Davy (1808)','"붕사에서 끄집어낸 검은 결정. 유리에 섞으면 절대 깨지지 않는 그릇이 되지."'],
+6:['고대 연금술사','"숯이자 다이아몬드. 모든 생명의 척추요. 같은 원소가 가장 부드럽고 가장 단단할 수 있다는 증거."'],
+7:['대니얼 러더퍼드 / Daniel Rutherford (1772)','"공기의 4분의 3을 차지하지만 호흡엔 쓸모없소. 다만 단백질을 짓고 폭약을 만든다오."'],
+8:['프리스틀리 & 셸레 / Priestley & Scheele (1774)','"불을 살리는 자. 우리가 매 순간 들이마시는 그 자체... 라부아지에가 \'산을 만든다\'고 이름 붙였지만 사실 그것도 틀린 이름이라오."'],
+9:['앙리 무아상 / Henri Moissan (1886)','"가장 사나운 산화제. 유리조차 녹이는 미친 형제요. 길들이려다 여러 화학자가 죽었다네."'],
+10:['램지 & 트래버스 / Ramsay & Travers (1898)','"\'새로움(neos)\'이라 이름지었지. 밤거리의 그 붉은 빛이 바로 이 아이의 노래라오."'],
+11:['험프리 데이비 / Humphry Davy (1807)','"바닷물을 갈라 얻었소. 우리가 매일 먹는 소금의 절반이지."'],
+12:['조지프 블랙 / Joseph Black (1755)','"식물 잎 속의 초록 심장. 별이 무거운 원소를 만들 때 가장 먼저 만든 별의 자식이오."'],
+13:['외르스테드 / Hans Christian Ørsted (1825)','"한때 금보다 비쌌던 금속. 지금은 캔과 비행기로 우리 곁에 있지."'],
+14:['베르셀리우스 / Jöns Jacob Berzelius (1824)','"모래에서 캐낸 회색 결정. 인류의 두뇌가 된 원소... 컴퓨터 칩의 어머니요."'],
+15:['헤니히 브란트 / Hennig Brand (1669)','"오줌을 끓이다 발견했소. 어둠 속에서 스스로 빛나는 \'빛을 가져온 자\'... 성냥과 폭탄을 동시에 낳은 양면의 원소."'],
+16:['고대 광부','"지옥불의 냄새. 화약과 고무를 단단하게 만드는 노란 가루."'],
+17:['칼 빌헬름 셸레 / Carl Wilhelm Scheele (1774)','"녹색의 죽음. 1차 세계대전에서 처음으로 무기가 된 원소... 지금은 수영장을 지키지."'],
+18:['램지 & 레일리 / Ramsay & Rayleigh (1894)','"\'게으른 자(argos)\'요. 아무와도 싸우지 않아 용접의 보호막이 되지."'],
+19:['험프리 데이비 / Humphry Davy (1807)','"바나나의 비밀. 식물의 재(potash)에서 얻은 가장 흔한 알칼리금속이오."'],
+20:['험프리 데이비 / Humphry Davy (1808)','"뼈와 이를 짓는 석회. 너의 골격이 곧 이 원소의 신전이지."'],
+21:['라르스 닐손 / Lars Fredrik Nilson (1879)','"멘델레예프가 예언한 그 원소. 스칸디나비아의 자식이라 \'스칸듐\'."'],
+22:['윌리엄 그레고르 / William Gregor (1791)','"신(타이탄)의 이름을 가졌으나 약하지 않소. 임플란트로 너의 몸 안에 들어갈 수도 있는 차가운 거인."'],
+23:['델 리오 / Andrés Manuel del Río (1801)','"북유럽 미의 여신 바나디스(Vanadis)의 이름. 강철에 섞으면 절대 부러지지 않는 검이 되지."'],
+24:['보클랭 / Louis-Nicolas Vauquelin (1797)','"\'색(chroma)\'의 군주요. 모든 무지개 빛 도금이 이 자의 마법이지."'],
+25:['요한 간 / Johan Gottlieb Gahn (1774)','"마녀들의 검은 돌(magnes). 강철의 영혼을 깊게 만들지."'],
+26:['철기시대 대장장이','"별이 폭발하기 직전 마지막으로 만드는 원소. 너의 피의 붉음, 지구 핵의 무게가 모두 나의 것."'],
+27:['게오르크 브란트 / Georg Brandt (1735)','"광부들이 \'고블린(kobold)\'이라 부르며 무서워한 원소. 푸른 도자기의 비밀이지."'],
+28:['크론스테트 / Axel Fredrik Cronstedt (1751)','"악마(Old Nick)의 구리. 진짜 구리가 아니라며 이름이 그렇게 붙었지."'],
+29:['청동기 장인','"키프로스(Cuprum) 섬의 붉은 보물. 인류 최초의 금속 도구를 빚었고, 지금도 모든 전선 속에 흐른다."'],
+30:['파라켈수스 / Paracelsus (16세기)','"황동의 절반이오. 너의 면역도 이 자가 지키지."'],
+31:['부아보드랑 / Paul Émile Lecoq de Boisbaudran (1875)','"멘델레예프가 \'에카-알루미늄\'이라며 미리 예언했소. 손바닥 위에서 녹는 신비의 금속."'],
+32:['클레멘스 빙클러 / Clemens Winkler (1886)','"역시 멘델레예프가 예언한 \'에카-규소\'. 적외선을 보는 눈이지."'],
+33:['알베르투스 마그누스 / Albertus Magnus (13세기)','"독약의 왕. 보르자 가문이 즐겨 쓴 죽음의 분말이오... 지금은 반도체에 섞여 잠들었지."'],
+34:['베르셀리우스 / Jöns Jacob Berzelius (1817)','"달의 여신(Selene)의 이름. 복사기 속에서 빛에 반응해 글자를 새기지."'],
+35:['앙투안 발라르 / Antoine Jérôme Balard (1826)','"\'악취(bromos)\'의 화신. 상온에서 액체로 흐르는 두 비금속 중 하나라오."'],
+36:['램지 & 트래버스 / Ramsay & Travers (1898)','"\'숨은 자(kryptos)\'. 너무 잘 숨어 마지막에야 발견되었지."'],
+37:['분젠 & 키르히호프 / Bunsen & Kirchhoff (1861)','"분광기의 붉은 선(rubidus)에서 태어난 원소요. 지금은 원자시계의 1초를 정의하지."'],
+38:['크로퍼드 / Adair Crawford (1790)','"폭죽의 붉은 별이오. 스코틀랜드 마을 스트론티안(Strontian)의 이름을 가졌소."'],
+39:['요한 가돌린 / Johan Gadolin (1794)','"스웨덴의 작은 마을 위테르뷔(Ytterby)에서 태어난 형제 중 첫째. 같은 마을에서 4개의 원소가 발견되었지."'],
+40:['클라프로트 / Martin Heinrich Klaproth (1789)','"\'금색(zircon)\'을 가진 보석에서 캐낸 원소. 핵연료봉을 감싸는 갑옷이오."'],
+41:['찰스 하체트 / Charles Hatchett (1801)','"탄탈로스의 딸 \'니오베(Niobe)\'. 강한 자기장을 만드는 초전도체."'],
+42:['칼 빌헬름 셸레 / Carl Wilhelm Scheele (1778)','"납과 닮아 \'납을 닮은 자(molybdos)\'라 불렸소. 사실은 강철을 무적으로 만드는 비밀."'],
+43:['페리에 & 세그레 / Perrier & Segrè (1937)','"인류가 처음으로 만든 인공원소. 자연엔 거의 없지... 의료영상에 쓰여 너의 심장을 보여준다."'],
+44:['카를 클라우스 / Karl Karlovich Klaus (1844)','"러시아(Ruthenia)의 자식. 만년필 펜촉을 평생 닳지 않게 만드는 단단함."'],
+45:['월러스턴 / William Hyde Wollaston (1803)','"\'장미(rhodon)\'빛 염을 가진 원소. 자동차 매연을 정화하는 가장 비싼 보석."'],
+46:['월러스턴 / William Hyde Wollaston (1803)','"소행성 팔라스(Pallas)의 이름. 수소를 자신의 부피보다 900배 흡수하는 마법사요."'],
+47:['고대 은세공인','"달의 금속. 모든 사진과 거울의 비밀이며, 전기를 가장 잘 흘리는 자."'],
+48:['프리드리히 슈트로마이어 / Friedrich Stromeyer (1817)','"독성의 청금속. 옛 화가들이 노란색을 위해 다루다 병들었지."'],
+49:['라이히 & 리히터 / Reich & Richter (1863)','"분광기의 \'쪽빛(indigo)\'. 너의 손 안 스마트폰 화면이 바로 이 자의 마법."'],
+50:['청동기 장인','"청동의 절반. 통조림 깡통의 보호막. \'주석을 두드리면 노래한다\'는 옛말이 있지."'],
+51:['고대 화장술사','"홀로 있지 못하는 자(anti-monos). 항상 다른 원소와 결합하지... 이집트 여인의 검은 눈화장이 바로 이 자였다."'],
+52:['프란츠 뮐러 / Franz-Joseph Müller von Reichenstein (1782)','"\'대지(tellus)\'의 이름. 매우 희귀하지만 광디스크 속에서 정보를 새기지."'],
+53:['베르나르 쿠르투아 / Bernard Courtois (1811)','"보랏빛(iodes) 증기. 갑상선의 호르몬, 상처의 소독약."'],
+54:['램지 & 트래버스 / Ramsay & Travers (1898)','"\'낯선 자(xenos)\'. 자동차 헤드라이트의 그 강렬한 백색."'],
+55:['분젠 & 키르히호프 / Bunsen & Kirchhoff (1860)','"분광기의 푸른 선(caesius). 1초의 정의를 품은 원자시계의 심장."'],
+56:['칼 빌헬름 셸레 / Carl Wilhelm Scheele (1774)','"\'무거운 자(barys)\'. X선 사진에서 위장을 비추는 흰 그림자."'],
+57:['칼 모산데르 / Carl Gustaf Mosander (1839)','"\'숨은 자(lanthano)\'. 란타넘족 14형제의 큰형이오."'],
+58:['클라프로트 / Martin Heinrich Klaproth (1803)','"소행성 케레스(Ceres)의 자식. 라이터 부싯돌의 불꽃."'],
+59:['아우어 폰 벨스바흐 / Carl Auer von Welsbach (1885)','"\'녹색 쌍둥이(praseo-didymos)\'. 강력한 영구자석의 비밀."'],
+60:['아우어 폰 벨스바흐 / Carl Auer von Welsbach (1885)','"\'새로운 쌍둥이\'. 세상에서 가장 강한 자석을 만드는 자요."'],
+61:['마린스키 & 글렌데닌 / Marinsky & Glendenin (1945)','"불꽃을 훔친 프로메테우스(Prometheus)의 이름. 자연엔 거의 없는 인공의 형제."'],
+62:['부아보드랑 / Lecoq de Boisbaudran (1879)','"광맥(samarskite)의 자식. 사마륨 자석으로 다시 살아났소."'],
+63:['외젠 드마르세 / Eugène-Anatole Demarçay (1901)','"유럽(Europa) 대륙의 이름. TV 화면의 빨간 인광체."'],
+64:['드 마리냑 / Jean Charles Galissard de Marignac (1880)','"가돌린(Gadolin, 원자분광학의 아버지) 기념. MRI에서 너의 뇌를 비추지."'],
+65:['칼 모산데르 / Carl Gustaf Mosander (1843)','"위테르뷔(Ytterby) 가족의 둘째."'],
+66:['부아보드랑 / Lecoq de Boisbaudran (1886)','"\'얻기 어려운 자(dysprositos)\'. 강력한 네오디뮴 자석을 더 강하게 만드오."'],
+67:['델라퐁텐 / Marc Delafontaine 외 (1878)','"스톡홀름(Holmia)의 이름. 가장 강한 자기장을 견디는 원소."'],
+68:['칼 모산데르 / Carl Gustaf Mosander (1843)','"위테르뷔(Ytterby) 가족의 셋째. 광통신을 증폭시키지."'],
+69:['클레베 / Per Teodor Cleve (1879)','"신화의 \'툴레(Thule)\'. 휴대용 X선 장치의 동력이오."'],
+70:['드 마리냑 / Jean Charles Galissard de Marignac (1878)','"위테르뷔(Ytterby) 가족의 막내. 4형제 모두 같은 광산에서 태어났지."'],
+71:['조르주 위르뱅 / Georges Urbain (1907)','"파리(Lutetia)의 이름. 란타넘족 14형제의 막내."'],
+72:['코스테르 & 헤베시 / Coster & Hevesy (1923)','"코펜하겐(Hafnia)의 이름. 멘델레예프 사후에야 발견되었소."'],
+73:['안데르스 에케베리 / Anders Gustaf Ekeberg (1802)','"탄탈로스의 형벌처럼 산에 닿아도 녹지 않는 자... \'영원히 닿을 수 없는 물\'이라는 그 이름."'],
+74:['엘후야르 형제 / d\'Elhuyar Brothers (1783)','"\'무거운 돌(tung sten)\'. 가장 높은 녹는점을 가진 자... 백열등 필라멘트의 그 빛."'],
+75:['노다크 부부 & 베르크 / Noddack & Berg (1925)','"라인 강(Rhenus)의 자식. 가장 늦게 발견된 안정 원소."'],
+76:['스미스슨 테낭 / Smithson Tennant (1803)','"오줌 같은 냄새(osme). 가장 밀도 큰 원소요... 모든 원소 중 가장 무거운 결정체."'],
+77:['스미스슨 테낭 / Smithson Tennant (1803)','"무지개의 여신(Iris). 매우 단단해 지질학적 충돌을 견디지."'],
+78:['안토니오 데 우요아 / Antonio de Ulloa (1735)','"\'작은 은(platina)\'. 촉매 변환기와 결혼반지의 영원한 광택."'],
+79:['파라오의 보물지기','"태양의 눈물. 인류 역사 자체가 이 자를 향한 욕망이지... 부도 권력도 모두 이 노란빛."'],
+80:['연금술사','"\'살아있는 은(quicksilver)\'. 상온에서 흐르는 유일한 금속. 옛 모자장이들의 신경을 갉아먹었지."'],
+81:['윌리엄 크룩스 / William Crookes (1861)','"\'녹색 새싹(thallos)\'. 무색무취의 완벽한 독약... 추리소설의 단골이오."'],
+82:['로마 배관공','"수도관의 그 금속. 무겁고 부드러우며... 제국을 천천히 중독시켰다고 하지."'],
+83:['게오르기우스 아그리콜라 / Georgius Agricola (1546)','"펩토비스몰의 그 분홍 결정. 무거운 원소 중 가장 안정된 자."'],
+84:['마리 & 피에르 퀴리 / Marie & Pierre Curie (1898)','"퀴리 부인의 조국 폴란드(Polonia). 라듐보다 더 위험한 첫째 형."'],
+85:['코르손 외 / Corson, MacKenzie & Segrè (1940)','"\'불안정한 자(astatos)\'. 지구상에 단 25g밖에 존재하지 않는 가장 희귀한 원소."'],
+86:['프리드리히 도른 / Friedrich Ernst Dorn (1900)','"라듐의 자식. 지하실에서 스며나오는 보이지 않는 위협."'],
+87:['마르그리트 페레 / Marguerite Perey (1939)','"프랑스(France)의 이름. 자연계의 가장 무거운 알칼리금속, 그 양은 항상 30g 이하."'],
+88:['마리 & 피에르 퀴리 / Marie & Pierre Curie (1898)','"퀴리 부부의 진정한 자식. 한때 야광 시계바늘에 쓰였다... 그 노동자들은 모두 죽었소."'],
+89:['앙드레 드비에른 / André-Louis Debierne (1899)','"\'광선(aktinos)\'. 라듐의 150배 강력한 방사능."'],
+90:['베르셀리우스 / Jöns Jacob Berzelius (1828)','"천둥신 토르(Thor)의 이름. 미래의 안전한 핵연료가 될지도 모르오."'],
+91:['해니, 솟디, 크랜스턴 / Hahn, Soddy, Cranston 외 (1917)','"악티늄의 어버이(proto-actinium). 매우 희귀한 방사성 원소."'],
+92:['클라프로트 / Martin Heinrich Klaproth (1789)','"천왕성(Uranus)의 자식. 1g으로 도시를 비추거나... 멸망시킬 수 있는 양면의 신."'],
+93:['맥밀런 & 에이벨슨 / McMillan & Abelson (1940)','"해왕성(Neptune). 우라늄 다음의 첫 인공원소."'],
+94:['시보그 외 / Glenn T. Seaborg 외 (1940)','"명왕성(Pluto)의 이름. 나가사키를 무너뜨린 그 핵... 그리고 보이저호를 명왕성 너머로 보낸 동력."'],
+95:['시보그 외 / Glenn T. Seaborg 외 (1944)','"아메리카 대륙의 이름. 너의 집 연기탐지기 안에서 지금도 깨어 있다."'],
+96:['시보그 외 / Glenn T. Seaborg 외 (1944)','"퀴리 부부 기념. 화성 탐사선 큐리오시티의 심장."'],
+97:['톰슨 외 / Stanley G. Thompson 외 (1949)','"버클리 대학(Berkeley)의 자식. 단 몇 그램만 만들어진 신비."'],
+98:['톰슨 외 / Stanley G. Thompson 외 (1950)','"캘리포니아의 이름. 한 번 만드는데 1g당 2700만 달러... 가장 비싼 원소."'],
+99:['고스 외 / Albert Ghiorso 외 (1952)','"아인슈타인(Einstein)의 이름. 수소폭탄 실험 잿더미에서 처음 발견되었소."'],
+100:['고스 외 / Albert Ghiorso 외 (1952)','"페르미(Fermi)의 이름. 같은 폭발에서 같이 태어난 형제."'],
+101:['시보그 외 / Seaborg 외 (1955)','"멘델레예프(Mendeleev) 기념. 그가 만든 표를 그가 죽은 후 사람들이 채워나간 거지."'],
+102:['로렌스 버클리 / Lawrence Berkeley Lab. (1958)','"노벨(Nobel) 연구소 명명. 노벨상의 그 노벨이오."'],
+103:['로렌스 버클리 / Lawrence Berkeley Lab. (1961)','"사이클로트론을 만든 어니스트 로렌스(Ernest Lawrence)의 이름. 악티늄족의 마지막 자식."'],
+104:['두브나 / 버클리 / Dubna · LBNL (1964)','"러더퍼드(Rutherford) 기념. 원자핵을 처음 본 그 사람."'],
+105:['두브나 / 버클리 / Dubna · LBNL (1968)','"러시아 두브나(Dubna) 연구소 명명."'],
+106:['로렌스 버클리 / Lawrence Berkeley Lab. (1974)','"시보그(Seaborg) 기념... 살아있는 사람의 이름이 원소가 된 첫 사례."'],
+107:['독일 GSI / GSI Helmholtz (1981)','"닐스 보어(Niels Bohr) 기념. 양자역학의 아버지."'],
+108:['독일 GSI / GSI Helmholtz (1984)','"독일 헤센(Hessen)주의 라틴어 이름."'],
+109:['독일 GSI / GSI Helmholtz (1982)','"리제 마이트너(Lise Meitner) 기념. 핵분열을 발견했지만 노벨상을 받지 못한 비운의 여성 과학자."'],
+110:['독일 GSI / GSI Helmholtz (1994)','"독일 다름슈타트(Darmstadt)시 명명. 이 도시에서 만들어졌소."'],
+111:['독일 GSI / GSI Helmholtz (1994)','"X선을 발견한 뢴트겐(Röntgen) 기념."'],
+112:['독일 GSI / GSI Helmholtz (1996)','"코페르니쿠스(Copernicus) 기념. 지구가 도는 것을 알린 자."'],
+113:['일본 리켄 / RIKEN (2004)','"일본(Nihon)이 발견한 첫 원소... 동양 최초로 명명한 원소요."'],
+114:['두브나 / 리버모어 / JINR · LLNL (1998)','"플레로프(Flerov) 핵반응 연구소 기념."'],
+115:['두브나 / 리버모어 / JINR · LLNL (2003)','"모스크바 주(Moscow Oblast) 기념."'],
+116:['두브나 / 리버모어 / JINR · LLNL (2000)','"리버모어 국립연구소(Livermore) 명명."'],
+117:['두브나 / 리버모어 / JINR · LLNL (2010)','"테네시(Tennessee) 주 명명. 미국 연구소들이 협력했지."'],
+118:['두브나 / 리버모어 / JINR · LLNL (2002)','"오가네시안(Yuri Oganessian) 기념. 살아있는 사람의 이름이 원소가 된 두 번째 사례... 그가 만든 마지막 원소."'],
+};
+
+/* === 결정구조 미니 SVG 도식 ===
+   체심(BCC), 면심(FCC), 육각(HCP), 다이아, 단사, 사방, 능면, 정방, 단순입방, 사정 등
+   원자를 점으로, 격자를 선으로 그려서 32x32 작은 도식을 반환 */
+function xtalSvg(name){
+  if(!name || name==='?' || name==='—') return '<svg viewBox="0 0 32 32"><text x="16" y="20" text-anchor="middle" fill="#7a6ab8" font-size="9">?</text></svg>';
+  const stroke = '#a48bff', atom='#7cffb2', atomBig=2.0, atomMid=1.5;
+  // 정육면체 와이어프레임 좌표 (8 코너) - 등각투영
+  // 앞면 (0,0)(20,0)(20,20)(0,20), 뒷면 +(8,-8)
+  const F = {fl:[6,18], fr:[26,18], tl:[6,4], tr:[26,4]};         // 앞면(앞쪽)
+  const B = {bl:[14,10], br:[22,-2]?[22,-2]:[22,-2], tbl:[14,-4], tbr:[22,-12]};
+  // 더 단순하게 다시:
+  const C = [
+    [6,22],   // 0 앞왼아래
+    [26,22],  // 1 앞오아래
+    [26,8],   // 2 앞오위
+    [6,8],    // 3 앞왼위
+    [12,28],  // 4 뒤왼아래
+    [32,28],  // 5 뒤오아래 (잘림)
+    [32,14],  // 6 뒤오위
+    [12,14],  // 7 뒤왼위
+  ];
+  const lines = [
+    [0,1],[1,2],[2,3],[3,0],   // 앞면
+    [4,5],[5,6],[6,7],[7,4],   // 뒷면
+    [0,4],[1,5],[2,6],[3,7]    // 연결
+  ];
+  const cube = lines.map(([a,b])=>`<line x1="${C[a][0]}" y1="${C[a][1]}" x2="${C[b][0]}" y2="${C[b][1]}" stroke="${stroke}" stroke-width=".6"/>`).join('');
+  const corners = C.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="${atomMid}" fill="${atom}"/>`).join('');
+
+  let body = '';
+  switch(name){
+    case '체심': // BCC: 코너 + 중심
+      body = cube + corners + `<circle cx="19" cy="15" r="${atomBig}" fill="#ffd84a" stroke="#fff" stroke-width=".3"/>`;
+      break;
+    case '면심': // FCC: 코너 + 각 면 중심
+      body = cube + corners +
+        `<circle cx="16" cy="15" r="${atomBig}" fill="#ffd84a"/>
+         <circle cx="16" cy="22" r="${atomMid}" fill="#ffd84a" opacity=".7"/>
+         <circle cx="22" cy="15" r="${atomMid}" fill="#ffd84a" opacity=".7"/>`;
+      break;
+    case '육각':
+    case 'HCP':{
+      // 육각형 + 중간층
+      const cx=16, cy=16, r=10;
+      let hex = '';
+      const pts = [];
+      for(let i=0;i<6;i++){
+        const a = (Math.PI/3)*i - Math.PI/2;
+        pts.push([cx + r*Math.cos(a), cy + r*Math.sin(a)]);
+      }
+      const poly = pts.map(p=>p.join(',')).join(' ');
+      hex = `<polygon points="${poly}" fill="none" stroke="${stroke}" stroke-width=".7"/>`;
+      pts.forEach(p=> hex += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${atomMid}" fill="${atom}"/>`);
+      hex += `<circle cx="${cx}" cy="${cy}" r="${atomBig}" fill="#ffd84a"/>`;
+      body = hex;
+      break;
+    }
+    case '다이아':
+    case '다이아/흑연':{ // 다이아몬드 격자 — 사면체 결합 표시
+      body = cube + corners +
+        `<circle cx="13" cy="14" r="${atomBig}" fill="#66f0ff"/>
+         <circle cx="22" cy="20" r="${atomMid}" fill="#66f0ff" opacity=".8"/>
+         <line x1="13" y1="14" x2="6" y2="8" stroke="#66f0ff" stroke-width=".5"/>
+         <line x1="13" y1="14" x2="26" y2="8" stroke="#66f0ff" stroke-width=".5"/>
+         <line x1="13" y1="14" x2="6" y2="22" stroke="#66f0ff" stroke-width=".5"/>
+         <line x1="13" y1="14" x2="22" y2="20" stroke="#66f0ff" stroke-width=".5"/>`;
+      break;
+    }
+    case '능면':{ // 마름모 평행육면체 (찌그러진 큐브)
+      const D = [[8,22],[26,24],[28,10],[10,8],[14,28],[32,30],[34,16]];
+      const ll = [[0,1],[1,2],[2,3],[3,0],[0,4],[1,5],[2,6]];
+      body = ll.map(([a,b])=>`<line x1="${D[a][0]}" y1="${D[a][1]}" x2="${D[b][0]}" y2="${D[b][1]}" stroke="${stroke}" stroke-width=".6"/>`).join('') +
+        D.slice(0,4).map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="${atomMid}" fill="${atom}"/>`).join('');
+      break;
+    }
+    case '단순입방':
+      body = cube + corners;
+      break;
+    case '단사':{ // 비스듬한 평행육면체
+      const D = [[6,24],[24,24],[28,8],[10,8],[14,30],[32,30],[36,14]];
+      const ll = [[0,1],[1,2],[2,3],[3,0],[0,4],[1,5],[2,6]];
+      body = ll.map(([a,b])=>`<line x1="${D[a][0]}" y1="${D[a][1]}" x2="${D[b][0]}" y2="${D[b][1]}" stroke="${stroke}" stroke-width=".6"/>`).join('') +
+        D.slice(0,4).map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="${atomMid}" fill="${atom}"/>`).join('');
+      break;
+    }
+    case '사방':{ // 직육면체 (a≠b≠c, 모두 직각)
+      const D = [[5,24],[28,24],[28,8],[5,8],[10,28],[33,28],[33,12]];
+      const ll = [[0,1],[1,2],[2,3],[3,0],[0,4],[1,5],[2,6]];
+      body = ll.map(([a,b])=>`<line x1="${D[a][0]}" y1="${D[a][1]}" x2="${D[b][0]}" y2="${D[b][1]}" stroke="${stroke}" stroke-width=".6"/>`).join('') +
+        D.slice(0,4).map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="${atomMid}" fill="${atom}"/>`).join('');
+      break;
+    }
+    case '정방':{ // 정사각 기둥
+      const D = [[8,26],[26,26],[26,4],[8,4],[14,30],[32,30],[32,8]];
+      const ll = [[0,1],[1,2],[2,3],[3,0],[0,4],[1,5],[2,6]];
+      body = ll.map(([a,b])=>`<line x1="${D[a][0]}" y1="${D[a][1]}" x2="${D[b][0]}" y2="${D[b][1]}" stroke="${stroke}" stroke-width=".6"/>`).join('') +
+        D.slice(0,4).map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="${atomMid}" fill="${atom}"/>`).join('');
+      break;
+    }
+    case '사정':{ // 삼사정계 (모두 다른 각도)
+      const D = [[7,25],[25,22],[28,8],[10,9],[14,30],[31,28],[34,14]];
+      const ll = [[0,1],[1,2],[2,3],[3,0],[0,4],[1,5],[2,6]];
+      body = ll.map(([a,b])=>`<line x1="${D[a][0]}" y1="${D[a][1]}" x2="${D[b][0]}" y2="${D[b][1]}" stroke="${stroke}" stroke-width=".6"/>`).join('') +
+        D.slice(0,4).map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="${atomMid}" fill="${atom}"/>`).join('');
+      break;
+    }
+    case '복잡':
+      body = cube + corners +
+        `<circle cx="14" cy="14" r="1.2" fill="#ff8ac6"/>
+         <circle cx="20" cy="18" r="1.2" fill="#ff8ac6"/>
+         <circle cx="18" cy="22" r="1.2" fill="#ff8ac6"/>`;
+      break;
+    default:
+      body = cube + corners;
+  }
+  return `<svg viewBox="0 0 38 32">${body}</svg>`;
+}
+
+function stateInfo(s){
+  if(s==='s') return ['고체','#9aaeb8'];
+  if(s==='l') return ['액체','#66f0ff'];
+  if(s==='g') return ['기체','#7cffb2'];
+  return ['?','#7a6ab8'];
+}
+
+// 보어 모델 껍질 채움 (예외 전자배치 반영)
+function shellFill(z){
+  const fill = getOrbitalFill(z);
+  const shells = {};
+  for(const [name,n,l,cap] of ORBITAL_ORDER){
+    if(fill[name]) shells[n] = (shells[n]||0) + fill[name];
+  }
+  const out = [];
+  for(let n=1; n<=7; n++){
+    if(shells[n]) out.push(shells[n]);
+  }
+  return out;
+}
+
+// === 껍질(쉘)별 색상 팔레트 (K~Q) ===
+const SHELL_COLORS = [
+  '#7cffb2', // K - 라임그린 (가장 안쪽, 안정)
+  '#66f0ff', // L - 시안
+  '#a48bff', // M - 라벤더
+  '#ffd84a', // N - 골드
+  '#ff8ac6', // O - 핑크
+  '#ff5c5c', // P - 레드
+  '#ffffff', // Q - 화이트
+];
+function shellColor(n){ return SHELL_COLORS[Math.max(0, Math.min(SHELL_COLORS.length-1, n-1))]; }
+const SHELL_LABELS = ['K','L','M','N','O','P','Q'];
+
+// === 오비탈 (Madelung 채움 순서) ===
+const ORBITAL_ORDER = [
+  ['1s',1,0,2],['2s',2,0,2],['2p',2,1,6],['3s',3,0,2],['3p',3,1,6],
+  ['4s',4,0,2],['3d',3,2,10],['4p',4,1,6],['5s',5,0,2],['4d',4,2,10],
+  ['5p',5,1,6],['6s',6,0,2],['4f',4,3,14],['5d',5,2,10],['6p',6,1,6],
+  ['7s',7,0,2],['5f',5,3,14],['6d',6,2,10],['7p',7,1,6]
+];
+// [name, n(껍질), l(0=s/1=p/2=d/3=f), capacity]
+
+// 예외 전자배치 (실험값과 다른 규칙) - 오비탈명 → 전자수 객체로 저장
+// 자동 채움 결과를 덮어쓸 정보만 기록
+const CONFIG_EXCEPTIONS = {
+  24:{'4s':1,'3d':5},        // Cr
+  29:{'4s':1,'3d':10},       // Cu
+  41:{'5s':1,'4d':4},        // Nb
+  42:{'5s':1,'4d':5},        // Mo
+  44:{'5s':1,'4d':7},        // Ru
+  45:{'5s':1,'4d':8},        // Rh
+  46:{'5s':0,'4d':10},       // Pd
+  47:{'5s':1,'4d':10},       // Ag
+  57:{'5d':1,'4f':0},        // La
+  58:{'5d':1,'4f':1},        // Ce
+  64:{'5d':1,'4f':7},        // Gd
+  78:{'6s':1,'5d':9},        // Pt
+  79:{'6s':1,'5d':10},       // Au
+  89:{'6d':1,'5f':0},        // Ac
+  90:{'6d':2,'5f':0},        // Th
+  91:{'6d':1,'5f':2},        // Pa
+  92:{'6d':1,'5f':3},        // U
+  93:{'6d':1,'5f':4},        // Np
+  96:{'6d':1,'5f':7},        // Cm
+};
+
+// 원소의 오비탈별 채움량을 객체로 반환 (예외 적용)
+function getOrbitalFill(z){
+  const fill = {};
+  let left = z;
+  // 1) Madelung 순서로 채움
+  for(const [name,n,l,cap] of ORBITAL_ORDER){
+    if(left<=0) break;
+    const f = Math.min(cap, left);
+    fill[name] = f;
+    left -= f;
+  }
+  // 2) 예외 적용
+  const ex = CONFIG_EXCEPTIONS[z];
+  if(ex){
+    // 예외 룰: 표준 채움에서 변경되는 오비탈을 그대로 set
+    // 예외 오비탈만 차이만큼 다른 오비탈에서 보충돼야 하지만,
+    // 지정된 값들이 이미 합이 맞도록 작성됐으므로 직접 대입
+    for(const k in ex){
+      // 직전 오비탈에서 빠진 만큼 보전 (예: Cr 4s:2->1, 3d:4->5 ; 합=z 유지)
+      fill[k] = ex[k];
+    }
+  }
+  return fill;
+}
+
+// 전자배치 텍스트 (예외 반영)
+function configText(z){
+  const fill = getOrbitalFill(z);
+  const out = [];
+  for(const [name] of ORBITAL_ORDER){
+    if(fill[name] && fill[name] > 0){
+      out.push(`${name}${supDigits(fill[name])}`);
+    }
+  }
+  return out.join(' ');
+}
+
+// 채움 순서대로 [name, n, l, count] 시퀀스 (애니메이션용)
+function fillSequence(z){
+  const fill = getOrbitalFill(z);
+  const seq = [];
+  for(const [name,n,l,cap] of ORBITAL_ORDER){
+    if(fill[name]) seq.push([name, n, l, fill[name]]);
+  }
+  return seq;
+}
+function supDigits(n){
+  const map = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+  return String(n).split('').map(d=>map[d]).join('');
+}
+
+const CAT_INFO = {
+  alkali:["알칼리금속","#ff5e84"],
+  alkaline:["알칼리토금속","#ff9d57"],
+  transition:["전이금속","#ffd84a"],
+  postTM:["전이후금속","#9bd87b"],
+  metalloid:["준금속","#7cffb2"],
+  nonmetal:["비금속","#66f0ff"],
+  halogen:["할로젠","#a48bff"],
+  noble:["비활성기체","#ff8ac6"],
+  lanth:["란타넘족","#ffaee5"],
+  actin:["악티늄족","#ff7aa6"],
+  unknown:["미확정","#5a5a8a"],
+};
+
+/* =========================
+   GRID 렌더링
+   18 cols x 10 rows
+   row1=period1, ... row7=period7
+   row8=빈줄, row9=란타넘(57-71), row10=악티늄(89-103)
+   란타넘/악티늄 자리(57,89)는 placeholder
+   ========================= */
+const grid = document.getElementById('grid');
+const cellMap = {}; // num -> cell element
+
+function elPosition(e){
+  const [num,sym,en,ko,group,period] = e;
+  let row, col;
+  if(group === "L"){ row = 9; col = num - 57 + 3; } // 57->col4
+  else if(group === "A"){ row = 10; col = num - 89 + 3; } // 89->col4
+  else { row = period; col = group; }
+  return [row,col];
+}
+
+function buildGrid(){
+  // 18x10 매트릭스
+  for(let r=1;r<=10;r++){
+    for(let c=1;c<=18;c++){
+      const div = document.createElement('div');
+      div.className = 'cell empty';
+      div.style.gridRow = r;
+      div.style.gridColumn = c;
+      grid.appendChild(div);
+    }
+  }
+  // 원소 셀 채우기
+  ELEMENTS.forEach(e=>{
+    const [num,sym,en,ko,group,period,cat] = e;
+    const [r,c] = elPosition(e);
+    const cell = document.createElement('div');
+    cell.className = 'cell locked';
+    cell.style.gridRow = r;
+    cell.style.gridColumn = c;
+    cell.dataset.num = num;
+    cell.dataset.cat = cat;
+    cell.innerHTML = `
+      <div class="num">${num}</div>
+      <div class="sym">${sym}</div>
+      <div class="name">${ko}</div>
+    `;
+    grid.appendChild(cell);
+    cellMap[num] = cell;
+  });
+  // 캐릭터 댄스 영역 (주기율표 안 H/He 옆 빈 공간 활용)
+  // 1~3주기 col 3~12 (10칸) × 행 1~3 빈 공간을 풀로 사용
+  const danceCell = document.createElement('div');
+  danceCell.id = 'danceBox';
+  danceCell.className = 'danceBox dance gridDance';
+  danceCell.style.gridRow = '1 / span 3';
+  danceCell.style.gridColumn = '3 / span 10';
+  danceCell.innerHTML = `<div class="stage" id="stage"></div>`;
+  grid.appendChild(danceCell);
+
+  // 란타넘/악티늄 위치 표시 (57, 89 슬롯)
+  const ph1 = document.createElement('div');
+  ph1.className='cell';
+  ph1.style.gridRow=6; ph1.style.gridColumn=3;
+  ph1.style.background='#1d1140';
+  ph1.style.fontSize='8px';
+  ph1.innerHTML = `<div class="name" style="display:block;color:#7a6ab8">57-71</div>`;
+  grid.appendChild(ph1);
+  const ph2 = document.createElement('div');
+  ph2.className='cell';
+  ph2.style.gridRow=7; ph2.style.gridColumn=3;
+  ph2.style.background='#1d1140';
+  ph2.style.fontSize='8px';
+  ph2.innerHTML = `<div class="name" style="display:block;color:#7a6ab8">89-103</div>`;
+  grid.appendChild(ph2);
+}
+
+function buildLegend(){
+  const legend = document.getElementById('legend');
+  Object.entries(CAT_INFO).forEach(([k,[name,col]])=>{
+    const span = document.createElement('span');
+    span.innerHTML = `<i style="background:${col}"></i>${name}`;
+    legend.appendChild(span);
+  });
+}
+
+/* =========================
+   GAME LOGIC
+   ========================= */
+const state = {
+  remaining: [],   // 미해결 원자번호 큐 (랜덤)
+  retryNeeds: {},  // num -> 남은 정답 횟수 (틀린 적 있는 문제)
+  current: null,
+  attempts: 0,
+  hintShown: 0,
+  solved: new Set(),
+  okCount: 0,
+  missCount: 0,
+  passCount: 0,
+};
+
+/* === 타이머 === */
+let _timerStart = 0, _timerId = null, _timerPaused = 0;
+function startTimer(){
+  stopTimer();
+  _timerStart = Date.now();
+  _timerPaused = 0;
+  _timerId = setInterval(()=>{
+    const sec = Math.floor((Date.now() - _timerStart) / 1000);
+    document.getElementById('timer').textContent = fmtTime(sec);
+  }, 500);
+}
+function stopTimer(){ if(_timerId){ clearInterval(_timerId); _timerId = null; } }
+function elapsedSec(){ return Math.floor((Date.now() - _timerStart) / 1000); }
+function fmtTime(sec){
+  const m = Math.floor(sec/60), s = sec%60;
+  return `${m}:${s.toString().padStart(2,'0')}`;
+}
+
+/* === 최고기록 (localStorage) === */
+function bestKey(stage, hard){ return `zerotwo_best_${stage}${hard?'_h':''}`; }
+function getBest(stage, hard){
+  try{
+    const v = localStorage.getItem(bestKey(stage, hard));
+    return v ? parseInt(v,10) : null;
+  }catch(e){ return null; }
+}
+function setBest(stage, hard, sec){
+  try{ localStorage.setItem(bestKey(stage, hard), String(sec)); }catch(e){}
+}
+function updateBestRecordUI(){
+  const best = getBest(state.startStage, state.hardMode);
+  const el = document.getElementById('bestStat');
+  if(best != null){
+    document.getElementById('bestRecord').textContent = fmtTime(best) + (state.hardMode?' H':'');
+    el.style.display = '';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+
+// 진행 단위: 한 줄(주기)씩. 6/7주기는 본 그룹 + 란탄/악티늄족 분리.
+// 코드 식별: stage 키로 startGame이 어디서부터 시작할지 결정.
+const ROW_GROUPS = [
+  // [라벨, 원자번호 배열, stage]
+  ["2주기", [3,4,5,6,7,8,9,10], 2],
+  ["3주기", [11,12,13,14,15,16,17,18], 3],
+  ["4주기", [19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36], 4],
+  ["5주기", [37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54], 5],
+  ["6주기 (본 그룹)", [55,56,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86], 6],
+  ["7주기 (본 그룹)", [87,88,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118], 7],
+  ["란타넘족 (57-71)", [57,58,59,60,61,62,63,64,65,66,67,68,69,70,71], 8],
+  ["악티늄족 (89-103)", [89,90,91,92,93,94,95,96,97,98,99,100,101,102,103], 9],
+];
+
+function startGame(startStage, opts){
+  // startStage: ROW_GROUPS의 stage 값. 그 이전 stage 원소는 모두 자동 오픈
+  startStage = Math.max(2, Math.min(9, startStage || 2));
+  opts = opts || {};
+  state.startStage = startStage;
+  state.hardMode = !!opts.hard;
+  state.reviewMode = !!opts.review;
+  state.solved = new Set();
+  state.retryNeeds = {};
+  state.wrongOnce = new Set(); // 한 번이라도 틀리거나 패스한 원소(복습 모드용)
+  state.current = null;
+  state.okCount = state.missCount = state.passCount = 0;
+  // 타이머 시작
+  startTimer();
+  // 최고기록 표시
+  updateBestRecordUI();
+  // 미니보어 잔상도 모두 제거 후 모든 셀 잠금
+  Object.values(cellMap).forEach(c=>{
+    c.className='cell locked';
+    const mb = c.querySelector('.miniBohr');
+    if(mb) mb.remove();
+    c.classList.remove('solved-glow');
+  });
+  // 어떤 원자번호가 어느 stage에 속하는지 매핑
+  const stageOf = {};
+  ROW_GROUPS.forEach(([label,nums,stage])=>{
+    nums.forEach(n=> stageOf[n] = stage);
+  });
+  // 1·2번(H, He)은 항상 자동 오픈
+  state.solved.add(1); openCell(1, false);
+  state.solved.add(2); openCell(2, false);
+  // startStage 이전의 모든 원소 자동 오픈
+  ELEMENTS.forEach(el=>{
+    const [n] = el;
+    const s = stageOf[n];
+    if(s !== undefined && s < startStage){
+      state.solved.add(n);
+      openCell(n, false);
+    }
+  });
+  // 진행 큐: startStage 이상만
+  state.rowQueue = ROW_GROUPS
+    .filter(([label, nums, stage])=> stage >= startStage)
+    .map(([label,nums])=>({label, nums: shuffle(nums.slice())}));
+  state.currentRowIdx = 0;
+  if(state.rowQueue.length === 0){
+    showEnding();
+    return;
+  }
+  state.remaining = state.rowQueue[0].nums.slice();
+  showRowBanner(state.rowQueue[0].label);
+  updateStats();
+  nextQuestion();
+}
+
+/* === 주기/족별 안내 === */
+const STAGE_INFO = {
+  2:{
+    title:"2주기 (Period 2)", sub:"Li ~ Ne · 8개 원소",
+    speaker:"화학의 안내자",
+    quote:'"여기서부터 진짜 화학이 시작되오. 탄소·질소·산소... 이 세 형제가 모든 생명을 빚었지. 옥텟 규칙(8개로 안정)이 처음 등장하는 줄이라오."',
+    facts:[
+      "최외각이 L각(2번째 껍질). 정원 8개를 꽉 채우면 안정",
+      "C-N-O 세 원소가 단백질·DNA·물의 핵심",
+      "Ne(네온)에서 비활성기체 안정성을 처음 만남",
+      "이 줄의 비금속들은 공유결합으로 분자를 잘 만듦"
+    ]
+  },
+  3:{
+    title:"3주기 (Period 3)", sub:"Na ~ Ar · 8개 원소",
+    speaker:"화학의 안내자",
+    quote:'"공기·바닷물·지각의 절반이 이 줄에 모여 있소. Si는 컴퓨터를, Cl은 소독을, P는 DNA의 등뼈를 만들지."',
+    facts:[
+      "최외각이 M각이지만 18개 정원 중 8개만 채우고 다음 줄로 넘어감",
+      "Na, Mg는 알칼리/알칼리토 — 물과 격렬히 반응",
+      "Si는 지각의 27%, 반도체의 어머니",
+      "Cl은 가장 흔한 할로젠, Ar은 공기의 1%"
+    ]
+  },
+  4:{
+    title:"4주기 (Period 4)", sub:"K ~ Kr · 18개 원소 (전이금속 첫 등장!)",
+    speaker:"전이금속의 군주",
+    quote:'"전이금속 10형제가 처음 등장하는 위대한 줄이오. Fe(철)는 별이 죽기 직전 마지막으로 만든 원소... 너희 피의 붉음이 곧 이 줄의 자식이지."',
+    facts:[
+      "3d 궤도가 채워지기 시작 — 전이금속 10개 등장",
+      "Fe·Cu·Zn 등 우리 몸에 꼭 필요한 미량원소들",
+      "Ti·Cr·Ni·Co 등 산업의 핵심 합금 원료",
+      "끝의 Br은 상온 액체 비금속(2개 중 하나), Kr은 비활성기체"
+    ]
+  },
+  5:{
+    title:"5주기 (Period 5)", sub:"Rb ~ Xe · 18개 원소",
+    speaker:"귀금속의 사도",
+    quote:'"여기엔 보석과 촉매의 형제들이 모여 있소. Ag(은)·Pd·Rh — 이 셋이 자동차 매연을 정화하고, 모든 화학산업의 촉매가 된다네."',
+    facts:[
+      "4d 궤도 채움 — 무거운 전이금속 10개",
+      "Ag(은)는 전기 전도도 최고, 사진과 거울의 비밀",
+      "Sn(주석)·I(요오드)는 고대부터 사용된 원소",
+      "Mo·Pd·Ag 등 산업적으로 매우 중요"
+    ]
+  },
+  6:{
+    title:"6주기 본 그룹 (Period 6 main)", sub:"Cs, Ba, Hf~Rn · 17개 원소",
+    speaker:"무거운 자들의 왕좌",
+    quote:'"가장 무거운 안정 원소들이 모인 줄이오. W(텅스텐)는 모든 원소 중 가장 높은 녹는점, Au(금)와 Pt(백금)는 영원한 광채... 그리고 Hg(수은)만이 상온에서 흐른다."',
+    facts:[
+      "Cs는 1초의 정의를 품은 원자시계의 심장",
+      "W(텅스텐)는 녹는점 3422°C, 백열등 필라멘트",
+      "Au·Pt·Hg — 부와 영원, 그리고 죽음의 금속",
+      "Pb(납), Bi(비스무트)는 가장 안정한 무거운 원소"
+    ]
+  },
+  7:{
+    title:"7주기 본 그룹 (Period 7 main)", sub:"Fr, Ra, Rf~Og · 17개 원소",
+    speaker:"방사능의 신",
+    quote:'"인류가 만들어낸 원소들의 줄이오. 자연엔 거의 없거나, 있어도 곧 사라지지. 몇 초 만에 붕괴하는 자식들도 있다오... 핵 시대의 산물."',
+    facts:[
+      "대부분 인공원소, 매우 짧은 반감기",
+      "Fr·Ra는 자연계에 극미량",
+      "Og(오가네손, 118번)는 가장 마지막 발견 원소(2002)",
+      "Mt~Og는 100% 인공, 발견 즉시 붕괴"
+    ]
+  },
+  8:{
+    title:"란타넘족 (Lanthanides)", sub:"La ~ Lu · 15개 원소 (희토류)",
+    speaker:"위테르뷔의 광부",
+    quote:'"\'희토류\'라 부르는 14형제. 사실 그렇게 희귀하진 않지만 분리가 어려워 그리 불리오. 스마트폰·전기차·MRI... 현대 문명이 이 줄 없이는 굴러가지 않소."',
+    facts:[
+      "Nd(네오디뮴) 자석은 세상에서 가장 강력한 영구자석",
+      "Eu·Tb는 컬러 디스플레이의 빨강·녹색 인광체",
+      "Gd는 MRI 조영제로 뇌를 비춤",
+      "스웨덴 위테르뷔(Ytterby) 광산에서 형제 4명 발견"
+    ]
+  },
+  9:{
+    title:"악티늄족 (Actinides)", sub:"Ac ~ Lr · 15개 원소 (전부 방사성)",
+    speaker:"방사능의 안내자",
+    quote:'"모두 방사성. U(우라늄)는 1g으로 도시를 비추거나 멸망시킬 수 있는 양면의 신... Pu는 보이저호를 명왕성 너머로 보냈고, 동시에 나가사키를 무너뜨렸지."',
+    facts:[
+      "U·Pu는 핵발전·핵무기의 양면",
+      "Am은 너의 집 연기탐지기 안에 있음",
+      "Th는 미래의 안전한 핵연료 후보",
+      "Es 이후는 인공원소, Lr이 마지막"
+    ]
+  },
+};
+
+let _stageInfoTimer = null;
+function showStageInfo(stage){
+  const info = STAGE_INFO[stage];
+  if(!info) return;
+  const card = document.getElementById('infoCard');
+  // 헤드/대사/수치 자리에 stage 안내 주입
+  document.getElementById('ic_sym').textContent = '🌟';
+  document.getElementById('ic_sym').style.color = '#ffd84a';
+  document.getElementById('ic_name').textContent = info.title;
+  document.getElementById('ic_num').textContent = info.sub;
+  document.getElementById('ic_cat').textContent = '주기 안내';
+  const stEl = document.getElementById('ic_state');
+  stEl.textContent = 'NEW';
+  stEl.style.color = '#7cffb2';
+  document.getElementById('ic_speaker').textContent = info.speaker;
+  document.getElementById('ic_quote').textContent = info.quote;
+  // 보어/수치/전자배치 자리는 stage 사실 목록으로 대체 표시
+  // 보어 SVG는 비우고 facts를 보여주는 트릭: bohrLegend에 facts 채우고 수치 그리드는 비우기
+  const svg = document.getElementById('bohrSvg');
+  // 동적 요소 정리
+  [...svg.querySelectorAll('.dyn')].forEach(n=>n.remove());
+  // 별 모양 장식
+  const ns = 'http://www.w3.org/2000/svg';
+  const star = document.createElementNS(ns,'text');
+  star.setAttribute('class','dyn');
+  star.setAttribute('x','50'); star.setAttribute('y','58');
+  star.setAttribute('text-anchor','middle');
+  star.setAttribute('font-size','40');
+  star.setAttribute('fill','#ffd84a');
+  star.setAttribute('filter','drop-shadow(0 0 8px #ff4fa3)');
+  star.textContent = '✦';
+  svg.appendChild(star);
+  // facts → bohrLegend 자리
+  document.getElementById('bohrLegend').innerHTML = info.facts.map(f=>`<div style="margin-bottom:3px">• ${f}</div>`).join('');
+  // 수치 그리드 비우기 (점선)
+  ['ic_mass','ic_density','ic_melt','ic_boil','ic_val','ic_xtal','ic_en','ic_ie'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.textContent = '—';
+  });
+  card.classList.add('show');
+  card.classList.add('stageMode');
+}
+
+function showRowBanner(label){
+  flashFeedback(`▶ ${label} 시작!`, 'info');
+  // 어떤 stage인지 찾기
+  const cur = state.rowQueue[state.currentRowIdx];
+  if(cur){
+    const grp = ROW_GROUPS.find(g=>g[0]===cur.label);
+    if(grp) showStageInfo(grp[2]);
+  }
+}
+
+function nextQuestion(){
+  // 클리어 체크
+  if(state.solved.size === 118){
+    showEnding();
+    return;
+  }
+  // 현재 주기 내에서 미해결(재시도 포함) 다 끝났는지 확인
+  if(state.remaining.length === 0){
+    const retryInRow = Object.keys(state.retryNeeds).map(Number);
+    if(retryInRow.length > 0){
+      // 재시도 남아있으면 같은 주기에서 계속
+      state.remaining = shuffle(retryInRow);
+    } else {
+      // 다음 주기로
+      state.currentRowIdx += 1;
+      if(state.currentRowIdx >= state.rowQueue.length){
+        showEnding();
+        return;
+      }
+      const row = state.rowQueue[state.currentRowIdx];
+      state.remaining = row.nums.slice();
+      showRowBanner(row.label);
+    }
+  }
+  const num = state.remaining.shift();
+  state.current = num;
+  state.attempts = 0;
+  state.hintShown = 0;
+  document.getElementById('qNum').textContent = num;
+  document.getElementById('hintRow').innerHTML = '&nbsp;';
+  document.getElementById('feedback').innerHTML = '&nbsp;';
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('answer').value = '';
+  document.getElementById('answer').focus();
+  // 셀 깜빡임
+  Object.values(cellMap).forEach(c=>c.classList.remove('active'));
+  const cell = cellMap[num];
+  cell.classList.add('active');
+  // 약간의 retry 표시
+  if(state.retryNeeds[num] !== undefined){
+    cell.classList.add('retry');
+  }
+  // 하드 모드 카운트다운
+  if(state.hardMode) startQuestionCountdown(30);
+  else stopQuestionCountdown();
+}
+
+/* === 하드 모드: 문제당 카운트다운 === */
+let _qcdId = null, _qcdLeft = 0;
+function startQuestionCountdown(sec){
+  stopQuestionCountdown();
+  _qcdLeft = sec;
+  renderCountdown();
+  _qcdId = setInterval(()=>{
+    _qcdLeft -= 1;
+    renderCountdown();
+    if(_qcdLeft <= 0){
+      stopQuestionCountdown();
+      // 시간 초과 = 자동 패스
+      flashFeedback('⏰ 시간 초과!', 'bad');
+      skipQuestion();
+    }
+  }, 1000);
+}
+function stopQuestionCountdown(){
+  if(_qcdId){ clearInterval(_qcdId); _qcdId = null; }
+  const el = document.getElementById('qCountdown');
+  if(el) el.style.display='none';
+}
+function renderCountdown(){
+  let el = document.getElementById('qCountdown');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'qCountdown';
+    el.style.cssText = 'font-size:14px;font-weight:bold;text-align:center;margin-top:4px;letter-spacing:1px';
+    const fb = document.getElementById('feedback');
+    if(fb && fb.parentNode) fb.parentNode.insertBefore(el, fb);
+  }
+  el.style.display='';
+  el.textContent = `⏱ ${_qcdLeft}s`;
+  if(_qcdLeft <= 5){ el.style.color = '#ff5c5c'; el.style.textShadow = '0 0 8px #ff5c5c'; }
+  else if(_qcdLeft <= 10){ el.style.color = '#ffd84a'; el.style.textShadow='none'; }
+  else { el.style.color = '#7cffb2'; el.style.textShadow='none'; }
+}
+
+function getEl(num){ return ELEMENTS.find(e=>e[0]===num); }
+
+function updateStats(){
+  document.getElementById('progress').textContent = state.solved.size;
+  document.getElementById('okCount').textContent = state.okCount;
+  document.getElementById('missCount').textContent = state.missCount;
+  document.getElementById('passCount').textContent = state.passCount;
+}
+
+function showHint(){
+  const el = getEl(state.current);
+  const en = el[2];
+  state.hintShown = Math.min(state.hintShown + 1, en.length);
+  const masked = en.split('').map((ch,i)=> i < state.hintShown ? ch : (ch===' '?' ':'_')).join(' ');
+  document.getElementById('hintRow').textContent = masked;
+}
+
+function flashFeedback(msg, type){
+  const fb = document.getElementById('feedback');
+  fb.textContent = msg;
+  fb.className = 'feedback ' + (type||'');
+}
+
+function openCell(num, justSolved){
+  const cell = cellMap[num];
+  cell.classList.remove('locked','active','retry','wrong');
+  cell.classList.add('cat-'+(cell.dataset.cat||'unknown'));
+  // 셀 안에 미니 보어 모델 영구 표시 (살아있는 잔상)
+  if(!cell.querySelector('.miniBohr')){
+    cell.insertAdjacentHTML('beforeend', miniBohrSvg(num));
+    cell.classList.add('solved-glow');
+  }
+  if(justSolved){
+    cell.classList.add('justSolved');
+    setTimeout(()=>cell.classList.remove('justSolved'), 800);
+    // 화려한 폭죽
+    const r = cell.getBoundingClientRect();
+    burstAt(r.left + r.width/2, r.top + r.height/2, num);
+  }
+}
+
+// 셀에 들어가는 미니 보어
+function miniBohrSvg(z){
+  const shells = shellFill(z);
+  const radii = [12, 20, 28, 36, 42, 47, 49];
+  let groups = '';
+  shells.forEach((cnt, i)=>{
+    const r = radii[Math.min(i, radii.length-1)];
+    let dots = '';
+    for(let k=0;k<cnt;k++){
+      const a = (k/cnt)*Math.PI*2;
+      dots += `<circle class="mE" cx="${(50 + r*Math.cos(a)).toFixed(2)}" cy="${(50 + r*Math.sin(a)).toFixed(2)}" r="1.2"/>`;
+    }
+    groups += `<circle class="mShell" cx="50" cy="50" r="${r}"/>
+      <g class="mRot ${i%2?'rev':''}" style="animation-duration:${5+i*2}s">${dots}</g>`;
+  });
+  return `<div class="miniBohr"><svg viewBox="0 0 100 100">
+    <circle class="mNuc" cx="50" cy="50" r="3"/>
+    ${groups}
+  </svg></div>`;
+}
+
+// 큰 보어 컨테이너만 만들고 JS가 시간차로 채움 (순차 효과용)
+const BIG_RADII = [14, 22, 30, 38, 44, 49, 50];
+function bigBohrShell(){
+  return `<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+    <defs><radialGradient id="fxNucGrad">
+      <stop offset="0%" stop-color="#fff"/>
+      <stop offset="60%" stop-color="#ffd84a"/>
+      <stop offset="100%" stop-color="#ff4fa3"/>
+    </radialGradient></defs>
+  </svg>`;
+}
+
+// === A안 풀패널 빌더 ===
+function showFullPanel(z, layer, fxX, fxY){
+  const el = getEl(z); if(!el) return;
+  const [n,sym,en,ko,grp,per,cat] = el;
+  const seq = fillSequence(z);   // 채움 순서
+  const shells = shellFill(z);   // 최종 쉘 분포
+
+  // 컨테이너
+  const panel = document.createElement('div');
+  panel.className = 'fx-fullPanel';
+
+  // ── 좌측 보어 SVG
+  const shellWrap = document.createElement('div');
+  shellWrap.className = 'fp-shell';
+  shellWrap.innerHTML = `
+    <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+      <defs><radialGradient id="fxNucGrad">
+        <stop offset="0%" stop-color="#fff"/>
+        <stop offset="60%" stop-color="#ffd84a"/>
+        <stop offset="100%" stop-color="#ff4fa3"/>
+      </radialGradient></defs>
+    </svg>`;
+  panel.appendChild(shellWrap);
+
+  // ── 우측 오비탈 박스 패널
+  const orbWrap = document.createElement('div');
+  orbWrap.className = 'fp-orbitals';
+  orbWrap.innerHTML = `<div class="fp-orbHead">⚛️ ${sym} (No.${z}) · 오비탈 채움</div>`;
+  // 각 오비탈 행
+  const orbRowMap = {};
+  for(const [name, n2, l, count] of seq){
+    const cap = ORBITAL_ORDER.find(o=>o[0]===name)[3];
+    const row = document.createElement('div');
+    row.className = 'fp-row';
+    row.dataset.name = name;
+    let boxes = '';
+    for(let i=0;i<cap;i++){
+      // s=1칸(↑↓), p=3칸, d=5칸, f=7칸의 박스. 각 박스에 2개 들어가면 ↑↓
+      // 단순화: 캡 만큼 1칸씩 그리고 채워지면 점등
+      boxes += `<span class="fp-box" data-i="${i}"></span>`;
+    }
+    row.innerHTML = `<span class="fp-name">${name}</span><span class="fp-boxes">${boxes}</span>`;
+    orbWrap.appendChild(row);
+    orbRowMap[name] = row;
+  }
+  panel.appendChild(orbWrap);
+
+  // ── 요약 (마지막에 페이드인)
+  const valence = shells[shells.length-1];
+  let groupTag = (typeof grp === 'number') ? `${grp}족` : (grp==='L'?'란타넘족':'악티늄족');
+  let catName = (CAT_INFO[cat] && CAT_INFO[cat][0]) || '?';
+  const summary = document.createElement('div');
+  summary.className = 'fp-summary';
+  summary.innerHTML = `
+    <div>쉘 분포 <b>${shells.join(', ')}</b></div>
+    <div style="margin-top:6px">최외각 <b>${valence}개</b> <span class="tag">${groupTag}</span> <span class="tag" style="background:linear-gradient(90deg,#7cffb2,#3aa86a);color:#0a2a14">${catName}</span></div>
+  `;
+  panel.appendChild(summary);
+
+  layer.appendChild(panel);
+
+  // ── 보어 SVG 시퀀서 시작
+  const bohrSvg = shellWrap.querySelector('svg');
+  // 쉘 카운트 누적 추적
+  const liveShellCounts = {1:0,2:0,3:0,4:0,5:0,6:0,7:0};
+  const liveShellElems = {}; // n -> {ring, label, group}
+  const ns = 'http://www.w3.org/2000/svg';
+  const SHELL_LABELS = ['K','L','M','N','O','P','Q'];
+  const BIG_R = [14, 22, 30, 38, 44, 49, 50];
+
+  // 0) 핵
+  setTimeout(()=>{
+    const nuc = document.createElementNS(ns,'circle');
+    nuc.setAttribute('class','fpNuc');
+    nuc.setAttribute('cx',50); nuc.setAttribute('cy',50); nuc.setAttribute('r',6);
+    nuc.style.transformOrigin='50px 50px';
+    nuc.style.animation='seqNuc .25s ease-out forwards';
+    bohrSvg.appendChild(nuc);
+    const t = document.createElementNS(ns,'text');
+    t.setAttribute('x',50); t.setAttribute('y',52);
+    t.setAttribute('text-anchor','middle');
+    t.setAttribute('font-size','5'); t.setAttribute('fill','#fff');
+    t.setAttribute('font-family','monospace'); t.style.opacity='0';
+    t.style.animation='seqNuc .25s .1s ease-out forwards';
+    t.textContent = z;
+    bohrSvg.appendChild(t);
+  }, 0);
+
+  // 헬퍼: 쉘 n에 전자 추가 (없으면 만들고)
+  function ensureShell(n){
+    if(liveShellElems[n]) return liveShellElems[n];
+    const idx = n - 1;
+    const r = BIG_R[Math.min(idx, BIG_R.length-1)];
+    const ring = document.createElementNS(ns,'circle');
+    ring.setAttribute('class','fpShell');
+    ring.setAttribute('cx',50); ring.setAttribute('cy',50); ring.setAttribute('r',r);
+    ring.style.transformOrigin='50px 50px';
+    ring.style.animation='seqShell .35s ease-out forwards';
+    bohrSvg.appendChild(ring);
+
+    const label = document.createElementNS(ns,'text');
+    label.setAttribute('x',50); label.setAttribute('y', 50 - r - 2);
+    label.setAttribute('text-anchor','middle');
+    label.setAttribute('class','shellLabel');
+    label.style.opacity='0';
+    label.style.animation='seqNuc .3s ease-out forwards';
+    label.textContent = `${SHELL_LABELS[idx]||'?'}0`;
+    bohrSvg.appendChild(label);
+
+    const g = document.createElementNS(ns,'g');
+    g.setAttribute('class','shellRotG' + (idx%2?' rev':''));
+    g.style.transformOrigin='50px 50px';
+    bohrSvg.appendChild(g);
+
+    const obj = {ring, label, group:g, r, idx};
+    liveShellElems[n] = obj;
+    return obj;
+  }
+
+  // 헬퍼: 쉘 n에 전자 1개 추가 (배치 위치는 현재 카운트 기반 균등)
+  function addElectronToShell(n){
+    const sh = ensureShell(n);
+    liveShellCounts[n] += 1;
+    const cnt = liveShellCounts[n];
+    // 기존 전자들을 모두 다시 배치 (균등)
+    while(sh.group.firstChild) sh.group.removeChild(sh.group.firstChild);
+    for(let k=0;k<cnt;k++){
+      const a = (k/cnt)*Math.PI*2;
+      const e = document.createElementNS(ns,'circle');
+      e.setAttribute('class','fpE');
+      const color = shellColor(n);
+      e.style.setProperty('--electron-color', color);
+      e.style.filter = `drop-shadow(0 0 4px ${color})`;
+      e.setAttribute('cx', (50 + sh.r*Math.cos(a)).toFixed(2));
+      e.setAttribute('cy', (50 + sh.r*Math.sin(a)).toFixed(2));
+      e.setAttribute('r', 1.8);
+      e.style.transformOrigin = `${(50 + sh.r*Math.cos(a)).toFixed(2)}px ${(50 + sh.r*Math.sin(a)).toFixed(2)}px`;
+      // 마지막 전자만 펑 효과
+      if(k === cnt-1){
+        e.style.animation = 'seqOuter .35s cubic-bezier(.2,1.6,.4,1) forwards';
+      }
+      sh.group.appendChild(e);
+    }
+    sh.label.textContent = `${SHELL_LABELS[sh.idx]||'?'}${cnt}`;
+  }
+
+  // 1) 오비탈 시퀀스 진행 (각 오비탈 채움 시 박스 점등 + 쉘 카운트 증가)
+  const ORB_DELAY = 250;       // 오비탈 사이 간격
+  const startAt = 250;         // 핵 등장 후
+  let cursor = startAt;
+  const totalOrbitals = seq.length;
+  // 마지막 오비탈은 박스 점등을 하나씩 (탕탕탕)
+  seq.forEach(([name, sn, l, count], orbIdx)=>{
+    const isLast = orbIdx === totalOrbitals - 1;
+    const row = orbRowMap[name];
+    const boxes = row.querySelectorAll('.fp-box');
+    // 박스/쉘 채움 타이밍
+    if(isLast){
+      // 마지막 오비탈: 전자 하나씩 탕탕탕
+      const tang = Math.max(80, Math.min(180, 1100 / Math.max(1, count)));
+      // 행 강조
+      setTimeout(()=> row.classList.add('glow'), cursor);
+      for(let k=0;k<count;k++){
+        const t = cursor + k*tang;
+        setTimeout(()=>{
+          if(boxes[k]) boxes[k].classList.add('filled');
+          addElectronToShell(sn);
+          // 콤보 숫자
+          const combo = document.createElement('div');
+          combo.className = 'comboCount' + (k === count-1 ? ' final' : '');
+          combo.style.setProperty('--cx', (window.innerWidth/2) + 'px');
+          combo.style.setProperty('--cy', (window.innerHeight/2 - 220) + 'px');
+          combo.textContent = `${k+1}!`;
+          layer.appendChild(combo);
+          setTimeout(()=>combo.remove(), k === count-1 ? 1500 : 520);
+        }, t);
+      }
+      cursor += count*tang;
+    } else {
+      // 안쪽 오비탈: 한 번에 "촹" - 박스 동시 점등 + 쉘에 한꺼번에 추가
+      setTimeout(()=>{
+        row.classList.add('glow');
+        boxes.forEach((b,i)=>{ if(i<count) b.classList.add('filled'); });
+        for(let k=0;k<count;k++) addElectronToShell(sn);
+      }, cursor);
+      cursor += ORB_DELAY;
+    }
+  });
+
+  // 패널 자체 자동 제거(애니메이션 종료 후)
+  setTimeout(()=> panel.remove(), 4700);
+}
+
+// 큰 보어를 시간차로 채우는 시퀀서
+function animateBigBohr(svg, z, comboCb){
+  const ns = 'http://www.w3.org/2000/svg';
+  const shells = shellFill(z);
+  // 1) 핵
+  setTimeout(()=>{
+    const nuc = document.createElementNS(ns,'circle');
+    nuc.setAttribute('class','fxNuc');
+    nuc.setAttribute('cx',50); nuc.setAttribute('cy',50); nuc.setAttribute('r',6);
+    nuc.style.transformOrigin='50px 50px';
+    nuc.style.animation='seqNuc .25s ease-out forwards';
+    svg.appendChild(nuc);
+    // 핵 안 원자번호
+    const t = document.createElementNS(ns,'text');
+    t.setAttribute('x',50); t.setAttribute('y',52);
+    t.setAttribute('text-anchor','middle');
+    t.setAttribute('font-size','5'); t.setAttribute('fill','#fff');
+    t.setAttribute('font-family','monospace');
+    t.style.opacity='0';
+    t.style.animation='seqNuc .25s .1s ease-out forwards';
+    t.textContent = z;
+    svg.appendChild(t);
+  }, 0);
+
+  // 2) 안쪽 껍질들 (마지막을 제외하고) - 한 껍질씩 "촹"
+  const lastIdx = shells.length - 1;
+  const innerInterval = 220; // 220ms마다 한 껍질
+  shells.forEach((cnt, i)=>{
+    if(i === lastIdx) return; // 최외각은 따로
+    const delay = 200 + i*innerInterval;
+    setTimeout(()=>{
+      const r = BIG_RADII[Math.min(i, BIG_RADII.length-1)];
+      // 껍질 원
+      const ring = document.createElementNS(ns,'circle');
+      ring.setAttribute('class','fxShell');
+      ring.setAttribute('cx',50); ring.setAttribute('cy',50); ring.setAttribute('r',r);
+      ring.style.transformOrigin='50px 50px';
+      ring.style.animation='seqShell .35s ease-out forwards';
+      svg.appendChild(ring);
+      // 라벨 (K2, L8 같은 식)
+      const lab = document.createElementNS(ns,'text');
+      lab.setAttribute('x',50); lab.setAttribute('y', 50 - r - 2);
+      lab.setAttribute('text-anchor','middle');
+      lab.setAttribute('font-size','5');
+      lab.setAttribute('font-family','"Press Start 2P",monospace');
+      lab.setAttribute('fill','#ffd84a');
+      lab.style.opacity='0';
+      lab.style.animation='seqNuc .3s .1s ease-out forwards';
+      lab.textContent = `${SHELL_LABELS[i]||'?'}${cnt}`;
+      svg.appendChild(lab);
+      // 전자들 (안쪽 껍질은 한꺼번에 "촹")
+      const g = document.createElementNS(ns,'g');
+      g.setAttribute('class','fxRotG' + (i%2?' rev':''));
+      g.style.transformOrigin='50px 50px';
+      g.style.animation = `seqInner .4s cubic-bezier(.2,1.6,.4,1) forwards, fxRotShell 1.4s ${0.4}s linear forwards`;
+      for(let k=0;k<cnt;k++){
+        const a = (k/cnt)*Math.PI*2;
+        const e = document.createElementNS(ns,'circle');
+        e.setAttribute('class','fxE');
+        const color = shellColor(i + 1);
+        e.style.setProperty('--electron-color', color);
+        e.setAttribute('cx', (50 + r*Math.cos(a)).toFixed(2));
+        e.setAttribute('cy', (50 + r*Math.sin(a)).toFixed(2));
+        e.setAttribute('r', 1.8);
+        g.appendChild(e);
+      }
+      svg.appendChild(g);
+    }, delay);
+  });
+
+  // 3) 최외각 - 전자 하나씩 "탕탕탕탕탕"
+  const outerStart = 200 + Math.max(0, lastIdx) * innerInterval + 200;
+  if(lastIdx >= 0){
+    const cnt = shells[lastIdx];
+    const r = BIG_RADII[Math.min(lastIdx, BIG_RADII.length-1)];
+    // 껍질 원 먼저
+    setTimeout(()=>{
+      const ring = document.createElementNS(ns,'circle');
+      ring.setAttribute('class','fxShell');
+      ring.setAttribute('cx',50); ring.setAttribute('cy',50); ring.setAttribute('r',r);
+      ring.style.transformOrigin='50px 50px';
+      ring.style.animation='seqShell .35s ease-out forwards';
+      svg.appendChild(ring);
+    }, outerStart);
+    // 라벨도 미리
+    const labEl = document.createElementNS(ns,'text');
+    labEl.setAttribute('x',50); labEl.setAttribute('y', 50 - r - 2);
+    labEl.setAttribute('text-anchor','middle');
+    labEl.setAttribute('font-size','6');
+    labEl.setAttribute('font-family','"Press Start 2P",monospace');
+    labEl.setAttribute('fill','#ffd84a');
+    labEl.style.opacity='0';
+    setTimeout(()=>{
+      labEl.style.animation='seqNuc .3s ease-out forwards';
+      labEl.textContent = `${SHELL_LABELS[lastIdx]||'?'}`;
+      svg.appendChild(labEl);
+    }, outerStart + 50);
+    // 회전 그룹 미리 추가, 전자는 하나씩
+    const g = document.createElementNS(ns,'g');
+    g.setAttribute('class','fxRotG' + (lastIdx%2?' rev':''));
+    g.style.transformOrigin='50px 50px';
+    g.style.animation = `fxRotShell 1.4s linear forwards`;
+    setTimeout(()=> svg.appendChild(g), outerStart + 100);
+    // 전자 콤보
+    const tangInterval = Math.max(70, Math.min(180, 1200 / Math.max(1, cnt)));
+    for(let k=0;k<cnt;k++){
+      const a = (k/cnt)*Math.PI*2;
+      const t = outerStart + 200 + k*tangInterval;
+      setTimeout(()=>{
+        const e = document.createElementNS(ns,'circle');
+        e.setAttribute('class','fxE');
+        const color = shellColor(lastIdx + 1);
+        e.style.setProperty('--electron-color', color);
+        e.setAttribute('cx', (50 + r*Math.cos(a)).toFixed(2));
+        e.setAttribute('cy', (50 + r*Math.sin(a)).toFixed(2));
+        e.setAttribute('r', 1.8);
+        e.style.transformOrigin = `${(50 + r*Math.cos(a)).toFixed(2)}px ${(50 + r*Math.sin(a)).toFixed(2)}px`;
+        e.style.animation = 'seqOuter .35s cubic-bezier(.2,1.6,.4,1) forwards';
+        g.appendChild(e);
+        // 라벨 숫자도 갱신 (K2, L8)
+        labEl.textContent = `${SHELL_LABELS[lastIdx]||'?'}${k+1}`;
+        // 콤보 카운터 콜백
+        if(comboCb) comboCb(k+1, cnt);
+      }, t);
+    }
+  }
+}
+
+/* =========================
+   ✨ 화려한 정답 폭죽 효과 ✨
+   ========================= */
+function burstAt(x, y, num){
+  const layer = document.getElementById('fxLayer');
+  const solvedEl = num ? getEl(num) : null;
+  const setPos = (el)=>{
+    el.style.setProperty('--fx-x', x+'px');
+    el.style.setProperty('--fx-y', y+'px');
+  };
+
+  // ★ 순차 보어 모델 폭발 — 화면 중앙에서 안쪽 껍질부터, 최외각은 전자 하나씩 콤보
+  if(num){
+    const bohr = document.createElement('div');
+    bohr.className = 'fx-bohr';
+    setPos(bohr);
+    bohr.innerHTML = bigBohrShell();
+    layer.appendChild(bohr);
+
+    const svg = bohr.querySelector('svg');
+    animateBigBohr(svg, num, (k, total)=>{
+      const combo = document.createElement('div');
+      const isFinal = k === total;
+      const comboX = Math.min(Math.max(x, isFinal ? 150 : 70), window.innerWidth - (isFinal ? 150 : 70));
+      const comboY = Math.max(isFinal ? 135 : 80, y - (isFinal ? 220 : 180));
+      combo.className = 'comboCount' + (isFinal ? ' final' : '');
+      combo.style.setProperty('--cx', comboX+'px');
+      combo.style.setProperty('--cy', comboY+'px');
+      combo.textContent = `${k}!`;
+      layer.appendChild(combo);
+      setTimeout(()=>combo.remove(), isFinal ? 1500 : 520);
+    });
+
+    // 녹색 전자 파티클
+    const eCount = Math.min(num, 50);
+    for(let i=0;i<eCount;i++){
+      const p = document.createElement('div');
+      p.className = 'fx-particle dot b';
+      p.style.background = '#7cffb2';
+      p.style.boxShadow = '0 0 12px #7cffb2, 0 0 24px #7cffb2';
+      setPos(p);
+      const angle = Math.random()*Math.PI*2;
+      const dist = 200 + Math.random()*300;
+      p.style.setProperty('--dx', Math.cos(angle)*dist + 'px');
+      p.style.setProperty('--dy', Math.sin(angle)*dist + 'px');
+      p.style.animationDuration = (1.0 + Math.random()*0.6) + 's';
+      p.style.animationDelay = (1.2 + i*0.008) + 's';
+      layer.appendChild(p);
+      setTimeout(()=>p.remove(), 3200);
+    }
+
+    setTimeout(()=>bohr.remove(), 3500);
+  }
+
+  // 화면 플래시
+  const flash = document.createElement('div');
+  flash.className = 'fx-flash';
+  setPos(flash);
+  layer.appendChild(flash);
+  setTimeout(()=>flash.remove(), 600);
+
+  // 컬러 링 3개
+  for(let i=0;i<3;i++){
+    const ring = document.createElement('div');
+    ring.className = 'fx-ring' + (i===1?' r2':i===2?' r3':'');
+    setPos(ring);
+    layer.appendChild(ring);
+    setTimeout(()=>ring.remove(), 1200);
+  }
+
+  // 빛줄기 (12가닥)
+  const rays = document.createElement('div');
+  rays.className = 'fx-rays';
+  setPos(rays);
+  for(let i=0;i<12;i++){
+    const ray = document.createElement('div');
+    ray.className = 'fx-ray';
+    ray.style.transform = `rotate(${i*30}deg) translateX(-50%)`;
+    rays.appendChild(ray);
+  }
+  layer.appendChild(rays);
+  setTimeout(()=>rays.remove(), 900);
+
+  // 별/도트 파티클 (40개)
+  const colors = ['','b','g','w'];
+  for(let i=0;i<40;i++){
+    const p = document.createElement('div');
+    const isStar = Math.random() < 0.35;
+    p.className = 'fx-particle ' + (isStar ? 'star' : 'dot ' + colors[Math.floor(Math.random()*colors.length)]);
+    setPos(p);
+    const angle = Math.random()*Math.PI*2;
+    const dist = 120 + Math.random()*260;
+    p.style.setProperty('--dx', Math.cos(angle)*dist + 'px');
+    p.style.setProperty('--dy', Math.sin(angle)*dist + 'px');
+    p.style.animationDuration = (0.8 + Math.random()*0.7) + 's';
+    layer.appendChild(p);
+    setTimeout(()=>p.remove(), 1500);
+  }
+
+  // 중앙 대형 정답 텍스트
+  const popup = document.createElement('div');
+  popup.className = 'fx-popup';
+  if(solvedEl){
+    popup.innerHTML = `
+      <span class="fx-symbol">${solvedEl[1]}</span>
+      <span class="fx-name">${solvedEl[2]} · ${solvedEl[3]}</span>
+      <span class="fx-label">ELEMENT UNLOCKED</span>
+    `;
+  } else {
+    popup.innerHTML = '<span class="fx-symbol">+1</span><span class="fx-label">ELEMENT UNLOCKED</span>';
+  }
+  setPos(popup);
+  layer.appendChild(popup);
+  setTimeout(()=>popup.remove(), 1500);
+
+  // 화면 흔들림
+  document.body.classList.add('shake');
+  setTimeout(()=>document.body.classList.remove('shake'), 360);
+}
+
+function submit(){
+  if(state.current===null) return;
+  const input = document.getElementById('answer');
+  const guess = (input.value||'').trim().toLowerCase();
+  if(!guess) return;
+  const el = getEl(state.current);
+  const correct = el[2].toLowerCase();
+  if(guess === correct){
+    onCorrect();
+  } else {
+    onWrong();
+  }
+}
+
+function fmt(v, suffix){
+  if(v==null || v===undefined) return '—';
+  return v + (suffix||'');
+}
+
+function drawBohr(z){
+  const svg = document.getElementById('bohrSvg');
+  if(!svg) return;
+  // 기존 동적 요소 제거 (defs는 유지)
+  [...svg.querySelectorAll('.dyn')].forEach(n=>n.remove());
+  const ns = 'http://www.w3.org/2000/svg';
+  const cx=50, cy=50;
+  // 핵
+  const nuc = document.createElementNS(ns,'circle');
+  nuc.setAttribute('class','nucleus dyn');
+  nuc.setAttribute('cx',cx); nuc.setAttribute('cy',cy); nuc.setAttribute('r',6);
+  svg.appendChild(nuc);
+  const ntx = document.createElementNS(ns,'text');
+  ntx.setAttribute('class','nuctxt dyn'); ntx.setAttribute('x',cx); ntx.setAttribute('y',cy);
+  ntx.textContent = z;
+  svg.appendChild(ntx);
+
+  const shells = shellFill(z);
+  const radii = [12, 20, 28, 36, 42, 47, 49];
+  const SHELL_LABELS = ['K','L','M','N','O','P','Q'];
+  shells.forEach((cnt, i)=>{
+    const r = radii[Math.min(i, radii.length-1)];
+    // 껍질 원
+    const ring = document.createElementNS(ns,'circle');
+    ring.setAttribute('class','shell dyn');
+    ring.setAttribute('cx',cx); ring.setAttribute('cy',cy); ring.setAttribute('r',r);
+    svg.appendChild(ring);
+    // 라벨 (위쪽에 K, L, M ...)
+    const label = document.createElementNS(ns,'text');
+    label.setAttribute('class','shellLabel dyn');
+    label.setAttribute('x', cx);
+    label.setAttribute('y', cy - r - 1);
+    label.setAttribute('text-anchor','middle');
+    label.textContent = `${SHELL_LABELS[i]||'?'}${cnt}`;
+    svg.appendChild(label);
+    // 전자 배치 (회전 그룹으로 묶어 천천히 돌게)
+    const g = document.createElementNS(ns,'g');
+    g.setAttribute('class','dyn bohrSpin');
+    g.style.animationDuration = (5 + i*2) + 's';
+    g.style.transformOrigin = '50px 50px';
+    if(i % 2 === 1) g.style.animationDirection = 'reverse';
+    for(let k=0;k<cnt;k++){
+      const ang = (k / cnt) * Math.PI * 2;
+      const ex = cx + r * Math.cos(ang);
+      const ey = cy + r * Math.sin(ang);
+      const e = document.createElementNS(ns,'circle');
+      e.style.setProperty('--electron-color', shellColor(i + 1));
+      e.setAttribute('class','e');
+      e.setAttribute('cx', ex); e.setAttribute('cy', ey);
+      e.setAttribute('r', 1.6);
+      g.appendChild(e);
+    }
+    svg.appendChild(g);
+  });
+
+  const legend = document.getElementById('bohrLegend');
+  if(legend){
+    legend.innerHTML = shells.map((c,i)=> `<div>${SHELL_LABELS[i]||'?'}각 <b style="color:${shellColor(i+1)}">${c}e⁻</b></div>`).join('');
+  }
+}
+
+function showInfo(num){
+  const el = getEl(num);
+  if(!el) return;
+  const [n,sym,en,ko,grp,per,cat] = el;
+  const d = DETAILS[n] || [];
+  const [mass, density, melt, boil, val] = [d[0], d[1], d[2], d[3], d[4]];
+  const ex = EXTRA[n] || [];
+  const [stt, color, en_, ie, xtal] = [ex[0], ex[1], ex[2], ex[3], ex[4]];
+  const lore = LORE[n] || ['이야기꾼','...정보가 전해지지 않은 신비의 원소.'];
+
+  const card = document.getElementById('infoCard');
+  document.getElementById('ic_sym').textContent = sym;
+  document.getElementById('ic_sym').style.color = color || '#ffd84a';
+  document.getElementById('ic_name').textContent = `${ko} (${en})`;
+  document.getElementById('ic_num').textContent = `No.${n} · ${per}주기 · ${typeof grp==='number'?grp+'족':grp+'족'}`;
+  document.getElementById('ic_cat').textContent = (CAT_INFO[cat] && CAT_INFO[cat][0]) || '?';
+  const [stLabel, stColor] = stateInfo(stt);
+  const stEl = document.getElementById('ic_state');
+  stEl.textContent = stLabel;
+  stEl.style.color = stColor;
+  document.getElementById('ic_speaker').textContent = lore[0];
+  document.getElementById('ic_quote').textContent = lore[1];
+  document.getElementById('ic_mass').textContent = fmt(mass,' g/mol');
+  document.getElementById('ic_density').textContent = fmt(density,' g/cm³');
+  document.getElementById('ic_melt').textContent = melt==null?'—':(melt+' °C');
+  document.getElementById('ic_boil').textContent = boil==null?'—':(boil+' °C');
+  document.getElementById('ic_val').textContent = val==null?'—':val;
+  // 결정구조: 미니 SVG + 이름
+  const xtalEl = document.getElementById('ic_xtal');
+  if(xtal){
+    xtalEl.innerHTML = `<span class="xtalIcon">${xtalSvg(xtal)}</span><span class="xtalLabel">${xtal}</span>`;
+  } else {
+    xtalEl.textContent = '—';
+  }
+  document.getElementById('ic_en').textContent = en_==null?'—':en_;
+  document.getElementById('ic_ie').textContent = ie==null?'—':(ie+' kJ/mol');
+  drawOrbitalBoxes(n);
+  card.classList.add('show');
+  card.classList.remove('stageMode');
+  drawBohr(n);
+}
+
+/* === 카드 안 오비탈 박스 시각화 === */
+function drawOrbitalBoxes(z){
+  const cont = document.getElementById('ic_orbBoxes');
+  if(!cont) return;
+  const fill = getOrbitalFill(z);
+  const isException = !!CONFIG_EXCEPTIONS[z];
+  cont.innerHTML = '';
+  // 채워진 오비탈만 행으로
+  for(const [name, n, l, cap] of ORBITAL_ORDER){
+    const cnt = fill[name];
+    if(!cnt) continue;
+    const row = document.createElement('div');
+    row.className = 'orbRow';
+    // Cr/Cu 등 예외 마크: 해당 원소의 예외에 들어있는 오비탈 행만 ⚠ 표시
+    if(isException && CONFIG_EXCEPTIONS[z][name] !== undefined){
+      row.classList.add('exception');
+    }
+    let boxes = '';
+    for(let i=0;i<cap;i++){
+      const filled = i < cnt;
+      // 잔잔한 시간차 채움 효과: transition-delay
+      const delay = filled ? (i * 30) : 0;
+      const color = filled ? `--electron-color:${shellColor(n)};` : '';
+      boxes += `<span class="orbBox${filled?' f':''}" style="transition-delay:${delay}ms;${color}"></span>`;
+    }
+    row.innerHTML = `<span class="orbName">${name}</span><span class="orbBoxList">${boxes}</span><span class="orbCount">${cnt}</span>`;
+    cont.appendChild(row);
+  }
+}
+
+function celebrateDance(){
+  const c = document.querySelector('#stage .charBox');
+  if(!c) return;
+  const fw = parseFloat(c.dataset.frameW || '0');
+  const lastX = -fw * (SPRITE_FRAMES - 1);
+  // 진행중이면 리셋
+  c.style.animation = 'none';
+  // reflow 강제로 애니메이션 재시작
+  void c.offsetWidth;
+  // N사이클 동안 춤 → 끝나면 마지막 프레임으로 정지
+  c.style.animation = `zerotwoSprite ${DANCE_CYCLE_SEC}s steps(${SPRITE_FRAMES}) ${DANCE_LOOPS}`;
+  clearTimeout(c._danceTimer);
+  c._danceTimer = setTimeout(()=>{
+    c.style.animation = 'none';
+    c.style.backgroundPosition = lastX + 'px 0';
+  }, DANCE_CYCLE_SEC * DANCE_LOOPS * 1000 + 50);
+}
+
+function onCorrect(){
+  const num = state.current;
+  const cell = cellMap[num];
+  stopQuestionCountdown();
+  celebrateDance();
+  showInfo(num);
+  // 재시도 큐 처리
+  if(state.retryNeeds[num] !== undefined){
+    state.retryNeeds[num] -= 1;
+    if(state.retryNeeds[num] <= 0){
+      delete state.retryNeeds[num];
+      state.solved.add(num);
+      openCell(num, true);
+      flashFeedback('🎉 정답! (재시도 클리어)', 'ok');
+    } else {
+      // 한 번 더 맞춰야 함
+      flashFeedback(`정답! 한 번만 더 맞으면 오픈 (남은 ${state.retryNeeds[num]}회)`, 'info');
+      cell.classList.remove('active','retry');
+      // 같은 문제 한 번 더 큐 앞쪽에 넣기
+      state.remaining.unshift(num);
+    }
+  } else {
+    state.solved.add(num);
+    openCell(num, true);
+    flashFeedback('🎉 정답!', 'ok');
+  }
+  state.okCount += 1;
+  updateStats();
+  setTimeout(nextQuestion, 700);
+}
+
+function onWrong(){
+  const num = state.current;
+  const cell = cellMap[num];
+  state.attempts += 1;
+  state.missCount += 1;
+  if(state.wrongOnce) state.wrongOnce.add(num);
+  // 틀린 문제 표시 (이미 retryNeeds가 있다면 카운트는 새로 추가하지 않음)
+  if(state.retryNeeds[num] === undefined){
+    state.retryNeeds[num] = 2; // 앞으로 연속 2번 맞춰야 오픈
+  }
+  cell.classList.add('wrong');
+  setTimeout(()=>cell.classList.remove('wrong'),400);
+  if(state.attempts >= 3){
+    stopQuestionCountdown();
+    // 정답 공개 후 다음 문제
+    const el = getEl(num);
+    flashFeedback(`정답 공개: ${el[2]} (${el[3]}). 다음 기회에 2번 맞춰서 오픈!`, 'bad');
+    document.getElementById('hintRow').textContent = el[2].split('').join(' ');
+    state.passCount += 1;
+    cell.classList.remove('active');
+    cell.classList.add('retry');
+    // 큐에 다시 넣기 (랜덤 위치)
+    if(!state.remaining.includes(num)){
+      const idx = Math.floor(Math.random()*Math.max(1,state.remaining.length));
+      state.remaining.splice(idx,0,num);
+    }
+    updateStats();
+    setTimeout(nextQuestion, 1700);
+  } else {
+    showHint();
+    flashFeedback(`틀렸어요! 힌트 공개 (${state.attempts}/3)`, 'bad');
+  }
+  updateStats();
+}
+
+function skipQuestion(){
+  if(state.current===null) return;
+  stopQuestionCountdown();
+  const num = state.current;
+  const el = getEl(num);
+  flashFeedback(`패스! 정답: ${el[2]} (${el[3]})`, 'info');
+  // 패스도 재시도 처리
+  if(state.retryNeeds[num] === undefined) state.retryNeeds[num] = 2;
+  if(state.wrongOnce) state.wrongOnce.add(num);
+  state.passCount += 1;
+  cellMap[num].classList.remove('active');
+  cellMap[num].classList.add('retry');
+  if(!state.remaining.includes(num)){
+    const idx = Math.floor(Math.random()*Math.max(1,state.remaining.length));
+    state.remaining.splice(idx,0,num);
+  }
+  updateStats();
+  setTimeout(nextQuestion, 900);
+}
+
+/* =========================
+   도트 미소녀 (3명)
+   각 미소녀: 머리(분홍/금발/하늘), 리본 뿔, 몸통, 다리
+   ========================= */
+/* (사용 안 함) 구버전 makeGirl - 호환을 위해 남김 */
+function makeGirl_legacy(ribbonColor, hairColor, eyeColor){
+  const hairShade = "rgba(0,0,0,0.22)";
+  return `
+  <svg viewBox="0 0 24 72" shape-rendering="crispEdges">
+    <!-- 그림자 -->
+    <ellipse cx="12" cy="65" rx="7" ry="1" fill="rgba(0,0,0,.35)"/>
+
+    <!-- 다리/신발 (정지) -->
+    <rect x="9"  y="42" width="3" height="20" fill="#ffe0d0"/>
+    <rect x="12" y="42" width="3" height="20" fill="#ffe0d0"/>
+    <rect x="9"  y="52" width="3" height="10" fill="#1a1a2e"/>
+    <rect x="12" y="52" width="3" height="10" fill="#1a1a2e"/>
+    <rect x="8"  y="62" width="4" height="3" fill="#111"/>
+    <rect x="12" y="62" width="4" height="3" fill="#111"/>
+
+    <!-- 몸통(허리흔들기) -->
+    <g class="body">
+      <!-- 미니스커트 (플리츠) -->
+      <rect x="6"  y="33" width="12" height="9" fill="#1d2a55"/>
+      <rect x="7"  y="33" width="1"  height="9" fill="#2c3e72"/>
+      <rect x="11" y="33" width="1"  height="9" fill="#2c3e72"/>
+      <rect x="15" y="33" width="1"  height="9" fill="#2c3e72"/>
+      <rect x="6"  y="33" width="12" height="1" fill="#0f1530"/>
+      <!-- 셔츠/몸통 -->
+      <rect x="7"  y="20" width="10" height="14" fill="#fafdff"/>
+      <rect x="7"  y="20" width="10" height="1"  fill="#dcdcea"/>
+      <rect x="8"  y="26" width="8"  height="1"  fill="#e6ecf2"/>
+      <rect x="11" y="22" width="2"  height="9"  fill="#eef2f7"/>
+      <!-- 리본 -->
+      <rect x="9"  y="20" width="6" height="2" fill="${ribbonColor}"/>
+      <rect x="11" y="19" width="2" height="4" fill="${ribbonColor}"/>
+      <rect x="8"  y="21" width="1" height="1" fill="${ribbonColor}"/>
+      <rect x="15" y="21" width="1" height="1" fill="${ribbonColor}"/>
+    </g>
+
+    <!-- 왼팔 (어깨피벗 (7,22), 위로 솟은 모양 → rotate로 내림/올림) -->
+    <g class="armL">
+      <rect x="6"  y="14" width="2" height="9" fill="#fafdff"/>
+      <rect x="6"  y="11" width="2" height="3" fill="#ffe0d0"/>
+      <!-- 손가락 살짝 -->
+      <rect x="5"  y="11" width="1" height="2" fill="#ffe0d0"/>
+      <rect x="8"  y="11" width="1" height="2" fill="#ffe0d0"/>
+    </g>
+
+    <!-- 오른팔 (어깨피벗 (17,22)) -->
+    <g class="armR">
+      <rect x="16" y="14" width="2" height="9" fill="#fafdff"/>
+      <rect x="16" y="11" width="2" height="3" fill="#ffe0d0"/>
+      <rect x="15" y="11" width="1" height="2" fill="#ffe0d0"/>
+      <rect x="18" y="11" width="1" height="2" fill="#ffe0d0"/>
+    </g>
+
+    <!-- 머리 (단발/쇼트밥) -->
+    <g class="head">
+      <!-- 단발: 턱선까지만 떨어지는 짧은 머리 (귀 옆으로 살짝) -->
+      <rect x="5"  y="4"  width="14" height="13" fill="${hairColor}"/>
+      <rect x="4"  y="6"  width="1"  height="10" fill="${hairColor}"/>
+      <rect x="19" y="6"  width="1"  height="10" fill="${hairColor}"/>
+      <!-- 얼굴 -->
+      <rect x="6"  y="6"  width="12" height="10" fill="#ffe0d0"/>
+      <!-- 앞머리(이마 살짝 가림) -->
+      <rect x="5"  y="4"  width="14" height="3" fill="${hairColor}"/>
+      <rect x="6"  y="7"  width="3"  height="2" fill="${hairColor}"/>
+      <rect x="15" y="7"  width="3"  height="2" fill="${hairColor}"/>
+      <rect x="9"  y="7"  width="6"  height="1" fill="${hairColor}"/>
+      <!-- 단발 끝(턱선 살짝 안쪽으로 말림) -->
+      <rect x="4"  y="14" width="2"  height="2" fill="${hairColor}"/>
+      <rect x="18" y="14" width="2"  height="2" fill="${hairColor}"/>
+      <!-- 머리 옆쪽 그림자 -->
+      <rect x="5"  y="10" width="1"  height="6" fill="${hairShade}"/>
+      <rect x="18" y="10" width="1"  height="6" fill="${hairShade}"/>
+      <!-- 눈 (큰 미소녀 눈) -->
+      <rect x="8"  y="11" width="2" height="3" fill="#fff"/>
+      <rect x="14" y="11" width="2" height="3" fill="#fff"/>
+      <rect x="8"  y="11" width="2" height="2" fill="${eyeColor}"/>
+      <rect x="14" y="11" width="2" height="2" fill="${eyeColor}"/>
+      <rect x="9"  y="11" width="1" height="1" fill="#fff"/>
+      <rect x="15" y="11" width="1" height="1" fill="#fff"/>
+      <!-- 속눈썹 -->
+      <rect x="8"  y="10" width="2" height="1" fill="#222"/>
+      <rect x="14" y="10" width="2" height="1" fill="#222"/>
+      <!-- 볼 -->
+      <rect x="7"  y="13" width="1" height="1" fill="#ffb3c8"/>
+      <rect x="16" y="13" width="1" height="1" fill="#ffb3c8"/>
+      <!-- 입 -->
+      <rect x="11" y="14" width="2" height="1" fill="#d65878"/>
+      <!-- 머리 리본(옆) -->
+      <rect x="3"  y="6"  width="2" height="2" fill="${ribbonColor}"/>
+    </g>
+  </svg>`;
+}
+
+/* =========================
+   미소녀 도트 (1명, 단발, 4프레임 스프라이트)
+   - 픽셀 그리드: W=24, H=36 → 한 프레임 (4프레임 가로 배치 = 96x36)
+   - 영상 자세 키프레임 그대로:
+     F1 양손 머리 위 (정면)
+     F2 왼손 머리 위, 오른손 옆 (몸 좌측 회전)
+     F3 양손 머리 위 (정면, 살짝 위로)
+     F4 오른손 머리 위, 왼손 옆 (몸 우측 회전)
+   ========================= */
+const PIXEL = 5; // 픽셀 1칸 = 5px
+const FW = 24, FH = 36; // 프레임 크기
+
+// 픽셀 직사각형 헬퍼 (프레임 오프셋 자동 적용)
+function px(frameIdx, x, y, w, h, color){
+  const ox = frameIdx * FW;
+  return `<rect x="${ox+x}" y="${y}" width="${w}" height="${h}" fill="${color}" shape-rendering="crispEdges"/>`;
+}
+
+// 한 프레임 그리는 함수: pose = 'F1' | 'F2' | 'F3' | 'F4'
+function drawFrame(idx, pose){
+  const HAIR  = "#e0a8a0";
+  const SKIN  = "#ffe0d0";
+  const SHIRT = "#9a1f3a";   // 영상 톤(붉은 자켓)
+  const SKIRT = "#3a2030";
+  const LEG   = "#1a1a2a";
+  const SHOE  = "#0a0a14";
+  const RIBBON= "#ff5e84";
+  const EYE   = "#3a8a4a";   // 영상 초록 눈
+
+  const out = [];
+  const r = (x,y,w,h,c)=> out.push(px(idx,x,y,w,h,c));
+
+  // 공통: 다리/신발/치마/몸통 (자세에 따라 살짝 시프트)
+  // 몸통 좌우 시프트
+  const bx = pose==='F2' ? -1 : pose==='F4' ? 1 : 0;
+
+  // 다리 (정지)
+  r(10, 28, 2, 6, SKIN);
+  r(12, 28, 2, 6, SKIN);
+  r(10, 34, 2, 2, SHOE);
+  r(12, 34, 2, 2, SHOE);
+
+  // 치마
+  r(8+bx, 22, 8, 6, SKIRT);
+  r(8+bx, 22, 8, 1, "#5a3050");
+
+  // 몸통(자켓)
+  r(9+bx, 14, 6, 8, SHIRT);
+  r(9+bx, 14, 6, 1, "#c43a5a"); // 옷깃 하이라이트
+  r(11+bx,16, 2, 5, "#ffd1d8"); // 안쪽 셔츠
+
+  // 머리(단발) — 영상의 핑크 분홍 단발
+  // 자세별 머리 좌우 기울임
+  const hx = pose==='F2' ? -1 : pose==='F4' ? 1 : 0;
+
+  // 뒤통수 + 단발 라인
+  r(8+hx, 2, 8, 8, HAIR);          // 헬멧
+  r(7+hx, 4, 1, 6, HAIR);          // 좌측 옆머리
+  r(16+hx,4, 1, 6, HAIR);          // 우측 옆머리
+  r(8+hx,10, 8, 2, HAIR);          // 단발 끝(턱선)
+  r(7+hx,10, 1, 1, HAIR);
+  r(16+hx,10,1, 1, HAIR);
+
+  // 얼굴
+  r(9+hx, 4, 6, 6, SKIN);
+
+  // 헤드밴드 / 머리 리본 (영상 빨간 띠)
+  r(8+hx, 2, 8, 1, RIBBON);
+  r(7+hx, 3, 1, 1, RIBBON);
+  r(16+hx,3, 1, 1, RIBBON);
+
+  // 앞머리(이마 가림)
+  r(9+hx, 4, 6, 1, HAIR);
+  r(9+hx, 5, 2, 1, HAIR);
+  r(13+hx,5, 2, 1, HAIR);
+
+  // 눈 (큰 도트눈)
+  r(10+hx, 6, 1, 2, EYE);
+  r(13+hx, 6, 1, 2, EYE);
+  r(10+hx, 6, 1, 1, "#fff");
+  r(13+hx, 6, 1, 1, "#fff");
+
+  // 볼 / 입
+  r(9+hx,  8, 1, 1, "#ffb3c8");
+  r(14+hx, 8, 1, 1, "#ffb3c8");
+  r(11+hx, 8, 2, 1, "#7a2030");
+
+  // 팔 (자세별)
+  // 어깨 위치(좌:9, 우:15) 기준
+  if(pose==='F1' || pose==='F3'){
+    // 양손 머리 위 (V자 위로)
+    // 왼팔
+    r(8+bx,  10, 1, 4, SHIRT);   // 위쪽 팔
+    r(7+bx,   8, 1, 2, SHIRT);
+    r(6+bx,   6, 1, 2, SKIN);    // 손
+    // 오른팔
+    r(15+bx, 10, 1, 4, SHIRT);
+    r(16+bx,  8, 1, 2, SHIRT);
+    r(17+bx,  6, 1, 2, SKIN);
+    if(pose==='F3'){
+      // 살짝 더 위로
+      r(6+bx,   5, 1, 1, SKIN);
+      r(17+bx,  5, 1, 1, SKIN);
+    }
+  } else if(pose==='F2'){
+    // 왼손 위 / 오른손 옆 (몸 좌측 회전)
+    r(8+bx, 10, 1, 4, SHIRT);
+    r(7+bx,  8, 1, 2, SHIRT);
+    r(6+bx,  6, 1, 2, SKIN);
+    // 오른팔: 옆구리로
+    r(15+bx, 14, 1, 5, SHIRT);
+    r(15+bx, 19, 1, 2, SKIN);
+    // 머리카락 펄럭(좌측)
+    r(5+hx, 6, 1, 5, HAIR);
+  } else if(pose==='F4'){
+    // 오른손 위 / 왼손 옆 (몸 우측 회전)
+    r(15+bx,10, 1, 4, SHIRT);
+    r(16+bx, 8, 1, 2, SHIRT);
+    r(17+bx, 6, 1, 2, SKIN);
+    // 왼팔 옆구리로
+    r(8+bx, 14, 1, 5, SHIRT);
+    r(8+bx, 19, 1, 2, SKIN);
+    // 머리카락 펄럭(우측)
+    r(18+hx, 6, 1, 5, HAIR);
+  }
+
+  return out.join('');
+}
+
+function buildSpriteSheet(){
+  // 4프레임 가로 배치
+  const frames = ['F1','F2','F3','F4'];
+  const inner = frames.map((p,i)=>drawFrame(i,p)).join('');
+  const W = FW*4, H = FH;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W*PIXEL}" height="${H*PIXEL}" shape-rendering="crispEdges">${inner}</svg>`;
+  // data URI
+  return 'url("data:image/svg+xml;utf8,'+encodeURIComponent(svg)+'")';
+}
+
+/* ===== 사용자 제공 스프라이트 시트 사용 =====
+   {{SPRITE_NOTE}}
+   - 흰색/연한 회색 체크 배경을 자동으로 투명 처리하여 캐싱
+=================================================== */
+const SPRITE_FRAMES = 8;
+const SPRITE_FILE = "{{SPRITE_DATA_URI}}";
+const SHOW_HEIGHT = 220;
+{{DANCE_SETTINGS}}
+let SPRITE_CACHED_URL = null; // 투명 처리한 데이터 URL 캐시
+
+// 흰/연회색을 투명으로 만드는 키잉 처리
+function keyOutWhite(img){
+  return new Promise((resolve, reject)=>{
+    try{
+      const cv = document.createElement('canvas');
+      cv.width = img.naturalWidth;
+      cv.height = img.naturalHeight;
+      const ctx = cv.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const data = ctx.getImageData(0,0,cv.width,cv.height);
+      const a = data.data;
+      // 임계값: 흰/연회색(체크 배경)만 투명화. 캐릭터의 흰 옷은 살리도록 보수적으로.
+      // 체크무늬는 거의 #ffffff와 #f0f0f0 정도. 옷의 흰색도 #ffffff지만,
+      // 체크 배경은 캐릭터 외곽 검정 라인 바깥이므로 페인트버킷처럼 가장자리부터 흘려넣기.
+      // 가장자리 채움 (flood fill from edges)
+      const W = cv.width, H = cv.height;
+      const visited = new Uint8Array(W*H);
+      const stack = [];
+      const isBg = (r,g,b,al)=> al>0 && r>=235 && g>=235 && b>=235; // 거의 흰
+      // 모든 가장자리 픽셀을 시드로
+      for(let x=0;x<W;x++){ stack.push([x,0]); stack.push([x,H-1]); }
+      for(let y=0;y<H;y++){ stack.push([0,y]); stack.push([W-1,y]); }
+      while(stack.length){
+        const [x,y] = stack.pop();
+        if(x<0||y<0||x>=W||y>=H) continue;
+        const idx = y*W+x;
+        if(visited[idx]) continue;
+        const p = idx*4;
+        if(!isBg(a[p],a[p+1],a[p+2],a[p+3])) continue;
+        visited[idx] = 1;
+        a[p+3] = 0; // 투명화
+        stack.push([x+1,y]); stack.push([x-1,y]); stack.push([x,y+1]); stack.push([x,y-1]);
+      }
+      ctx.putImageData(data,0,0);
+      resolve(cv.toDataURL('image/png'));
+    }catch(e){ reject(e); }
+  });
+}
+
+function buildGirls(){
+  const stage = document.getElementById('stage');
+  if(!stage) return;
+  const img = new Image();
+  img.onload = async ()=>{
+    let bgUrl;
+    try{
+      if(!SPRITE_CACHED_URL) SPRITE_CACHED_URL = await keyOutWhite(img);
+      bgUrl = SPRITE_CACHED_URL;
+    }catch(e){
+      bgUrl = SPRITE_FILE;
+    }
+    const natW = img.naturalWidth, natH = img.naturalHeight;
+    // stage 컨테이너에 더 안전하게 (위쪽 여유 충분히 — 입력창 안 가리도록)
+    const containerH = stage.clientHeight || 220;
+    const containerW = stage.clientWidth || 300;
+    const frameNatW = natW / SPRITE_FRAMES;
+    // 높이 75%, 너비 70%만 사용해서 위쪽 여유 ↑
+    const scaleByH = (containerH * 0.75) / natH;
+    const scaleByW = (containerW * 0.70) / frameNatW;
+    const scale = Math.max(0.4, Math.min(scaleByH, scaleByW, 1.2));
+    const fw = frameNatW * scale;
+    const fh = natH * scale;
+    const total = natW * scale;
+    const c = document.createElement('div');
+    c.className = 'charBox';
+    c.style.backgroundImage = `url("${bgUrl}")`;
+    c.style.width  = fw+'px';
+    c.style.height = fh+'px';
+    c.style.backgroundSize = total+'px '+fh+'px';
+    stage.innerHTML = '';
+    stage.appendChild(c);
+
+    // 동적 keyframes 주입 (정확한 픽셀 단위)
+    const kfId = 'kf-zerotwo-sprite';
+    let style = document.getElementById(kfId);
+    if(!style){ style = document.createElement('style'); style.id = kfId; document.head.appendChild(style); }
+    style.textContent = `@keyframes zerotwoSprite{
+      from{background-position: 0px 0;}
+      to  {background-position: -${total}px 0;}
+    }`;
+    // 박스에 애니메이션/정지 정보 저장
+    c.dataset.frameW = fw;
+    c.dataset.totalW = total;
+    // 기본 정지: 마지막 프레임 고정
+    const lastX = -fw * (SPRITE_FRAMES - 1);
+    c.style.animation = 'none';
+    c.style.backgroundPosition = lastX + 'px 0';
+  };
+  img.onerror = ()=>{
+    console.warn('[ZeroTwo] sprite.png 로드 실패. HTML과 같은 폴더에 sprite.png가 있는지, 또는 임베딩 도구(embed_sprite.html)로 base64 임베드했는지 확인하세요.');
+    stage.innerHTML = `<div style="color:#ffb3c8;font-size:10px;text-align:center;line-height:1.6;padding:8px">
+      sprite.png 가 보이지 않아요.<br/>HTML과 같은 폴더에<br/><b>sprite.png</b> 파일을 넣어주세요.
+    </div>`;
+  };
+  img.src = SPRITE_FILE;
+}
+
+/* =========================
+   화학의 여신 (큰 도트)
+   ========================= */
+function buildGoddess(){
+  const box = document.getElementById('goddessBox');
+  if(!box) return;
+  const SHOW_H = 480;
+  const img = new Image();
+  img.onload = async ()=>{
+    let bgUrl;
+    try{
+      if(!SPRITE_CACHED_URL) SPRITE_CACHED_URL = await keyOutWhite(img);
+      bgUrl = SPRITE_CACHED_URL;
+    }catch(e){
+      bgUrl = SPRITE_FILE;
+    }
+    const natW = img.naturalWidth, natH = img.naturalHeight;
+    const scale = SHOW_H / natH;
+    const fw = (natW / SPRITE_FRAMES) * scale;
+    const fh = SHOW_H;
+    const total = natW * scale;
+    box.style.backgroundImage = `url("${bgUrl}")`;
+    box.style.width  = fw+'px';
+    box.style.height = fh+'px';
+    box.style.backgroundSize = total+'px '+fh+'px';
+    // 여신은 계속 춤 (직접 애니메이션 부여)
+    box.style.animation = `zerotwoSprite ${DANCE_CYCLE_SEC}s steps(${SPRITE_FRAMES}) infinite`;
+    const nuke = box.querySelector('.goddessNuke');
+    if(nuke){ nuke.style.left = '-50px'; nuke.style.top = (fh*0.18)+'px'; }
+  };
+  img.src = SPRITE_FILE;
+  return;
+}
+// (구버전 buildGoddess는 아래 남겨도 호출되지 않음)
+function buildGoddess_legacy(){
+  // 32x72 픽셀 그리드, 단발(쇼트밥), 그룹 분리(.head/.body/.armL/.armR)
+  const svg = document.getElementById('goddessSvg');
+  svg.setAttribute('viewBox','0 0 32 72');
+  svg.setAttribute('shape-rendering','crispEdges');
+  svg.style.overflow = 'visible';
+  const hair = "#e9c98a";
+  const hairShade = "rgba(0,0,0,0.22)";
+  const ribbon = "#ff4fa3";
+  const eye = "#a44ec2";
+  svg.innerHTML = `
+    <!-- 그림자 -->
+    <ellipse cx="16" cy="65" rx="9" ry="1.2" fill="rgba(0,0,0,.45)"/>
+
+    <!-- 다리 + 스타킹 -->
+    <rect x="11" y="42" width="4" height="20" fill="#ffe0d0"/>
+    <rect x="17" y="42" width="4" height="20" fill="#ffe0d0"/>
+    <rect x="11" y="52" width="4" height="10" fill="#1a1a2e"/>
+    <rect x="17" y="52" width="4" height="10" fill="#1a1a2e"/>
+    <rect x="10" y="62" width="6" height="3"  fill="#111"/>
+    <rect x="16" y="62" width="6" height="3"  fill="#111"/>
+
+    <!-- 몸통 -->
+    <g class="body">
+      <!-- 미니스커트 -->
+      <rect x="8"  y="33" width="16" height="9" fill="#5a2a8a"/>
+      <rect x="9"  y="33" width="1"  height="9" fill="#7a3aa8"/>
+      <rect x="13" y="33" width="1"  height="9" fill="#7a3aa8"/>
+      <rect x="18" y="33" width="1"  height="9" fill="#7a3aa8"/>
+      <rect x="22" y="33" width="1"  height="9" fill="#7a3aa8"/>
+      <rect x="8"  y="33" width="16" height="1" fill="#ffd84a"/>
+      <rect x="8"  y="41" width="16" height="1" fill="#ffd84a"/>
+      <!-- 셔츠 -->
+      <rect x="9"  y="20" width="14" height="14" fill="#fafdff"/>
+      <rect x="13" y="22" width="2"  height="10" fill="#eef2f7"/>
+      <rect x="9"  y="20" width="14" height="1"  fill="#dcdcea"/>
+      <!-- 리본 -->
+      <rect x="12" y="20" width="8" height="2" fill="${ribbon}"/>
+      <rect x="15" y="19" width="2" height="4" fill="${ribbon}"/>
+      <rect x="11" y="21" width="1" height="1" fill="${ribbon}"/>
+      <rect x="20" y="21" width="1" height="1" fill="${ribbon}"/>
+    </g>
+
+    <!-- 왼팔 (어깨피벗 8,22) -->
+    <g class="armL">
+      <rect x="7"  y="14" width="2" height="9" fill="#fafdff"/>
+      <rect x="7"  y="11" width="2" height="3" fill="#ffe0d0"/>
+      <!-- 시험관(손 위) -->
+      <rect x="6"  y="6"  width="3" height="6" fill="#7cffb2" opacity=".92"/>
+      <rect x="6"  y="5"  width="3" height="1" fill="#ddd"/>
+    </g>
+
+    <!-- 오른팔 (어깨피벗 24,22) -->
+    <g class="armR">
+      <rect x="23" y="14" width="2" height="9" fill="#fafdff"/>
+      <rect x="23" y="11" width="2" height="3" fill="#ffe0d0"/>
+      <!-- 핵 (손 위) -->
+      <circle cx="24" cy="8" r="3" fill="#7cffb2"/>
+      <circle cx="24" cy="8" r="1.4" fill="#fff"/>
+      <rect x="21" y="8" width="6" height="0.6" fill="#fff" opacity=".7"/>
+      <rect x="24" y="5" width="0.6" height="6" fill="#fff" opacity=".7"/>
+    </g>
+
+    <!-- 머리 (단발) -->
+    <g class="head">
+      <rect x="6"  y="4"  width="20" height="13" fill="${hair}"/>
+      <rect x="5"  y="6"  width="1"  height="10" fill="${hair}"/>
+      <rect x="26" y="6"  width="1"  height="10" fill="${hair}"/>
+      <rect x="8"  y="6"  width="16" height="10" fill="#ffe0d0"/>
+      <!-- 앞머리 -->
+      <rect x="6"  y="4"  width="20" height="3" fill="${hair}"/>
+      <rect x="8"  y="7"  width="4"  height="2" fill="${hair}"/>
+      <rect x="20" y="7"  width="4"  height="2" fill="${hair}"/>
+      <rect x="12" y="7"  width="8"  height="1" fill="${hair}"/>
+      <!-- 단발 끝(턱선 안쪽 말림) -->
+      <rect x="5"  y="14" width="2"  height="2" fill="${hair}"/>
+      <rect x="25" y="14" width="2"  height="2" fill="${hair}"/>
+      <!-- 옆 그림자 -->
+      <rect x="7"  y="10" width="1"  height="6" fill="${hairShade}"/>
+      <rect x="24" y="10" width="1"  height="6" fill="${hairShade}"/>
+      <!-- 눈 -->
+      <rect x="11" y="11" width="3" height="4" fill="#fff"/>
+      <rect x="18" y="11" width="3" height="4" fill="#fff"/>
+      <rect x="11" y="11" width="3" height="3" fill="${eye}"/>
+      <rect x="18" y="11" width="3" height="3" fill="${eye}"/>
+      <rect x="12" y="11" width="1" height="1" fill="#fff"/>
+      <rect x="19" y="11" width="1" height="1" fill="#fff"/>
+      <rect x="11" y="10" width="3" height="1" fill="#222"/>
+      <rect x="18" y="10" width="3" height="1" fill="#222"/>
+      <!-- 볼 -->
+      <rect x="9"  y="14" width="2" height="1" fill="#ffb3c8"/>
+      <rect x="21" y="14" width="2" height="1" fill="#ffb3c8"/>
+      <!-- 입 -->
+      <rect x="14" y="15" width="4" height="1" fill="#d65878"/>
+      <rect x="15" y="16" width="2" height="1" fill="#d65878"/>
+      <!-- 머리 리본 -->
+      <rect x="3"  y="6"  width="3" height="3" fill="${ribbon}"/>
+    </g>
+  `;
+}
+
+/* =========================
+   엔딩 / 핵 폭발
+   ========================= */
+// 약점 복습 시작 - wrongOnce에 있는 원소만 모아서 다시 출제
+let _lastWrongList = [];
+function startReview(){
+  if(_lastWrongList.length === 0){
+    flashFeedback('복습할 원소가 없어요! 모두 한 번에 맞췄군요 ✨', 'ok');
+    return;
+  }
+  // 모든 셀 잠금 해제 (그 외는 오픈 유지)
+  state.solved = new Set();
+  state.retryNeeds = {};
+  state.wrongOnce = new Set();
+  state.current = null;
+  state.okCount = state.missCount = state.passCount = 0;
+  state.hardMode = false;
+  state.reviewMode = true;
+  state.startStage = 99; // 복습은 별도 카테고리
+  // 셀 시각 초기화
+  Object.values(cellMap).forEach(c=>{
+    c.className='cell locked';
+    const mb = c.querySelector('.miniBohr');
+    if(mb) mb.remove();
+    c.classList.remove('solved-glow');
+  });
+  // 복습 대상 외 모든 원소를 자동 오픈 (시각적으로 약점만 비어 보이게)
+  ELEMENTS.forEach(el=>{
+    const [n] = el;
+    if(!_lastWrongList.includes(n)){
+      state.solved.add(n);
+      openCell(n, false);
+    }
+  });
+  state.rowQueue = [{label:`📚 약점 복습 (${_lastWrongList.length}개)`, nums: shuffle(_lastWrongList.slice())}];
+  state.currentRowIdx = 0;
+  state.remaining = state.rowQueue[0].nums.slice();
+  startTimer();
+  document.getElementById('bestStat').style.display = 'none';
+  showRowBanner(state.rowQueue[0].label);
+  updateStats();
+  nextQuestion();
+}
+
+function showEnding(){
+  // 복습 대상 저장 (이번 라운드에서 한 번이라도 틀린 원소)
+  _lastWrongList = state.wrongOnce ? Array.from(state.wrongOnce) : [];
+  stopTimer();
+  const sec = elapsedSec();
+  // 최고기록 갱신
+  const prev = getBest(state.startStage, state.hardMode);
+  let isNewBest = false;
+  if(prev == null || sec < prev){
+    setBest(state.startStage, state.hardMode, sec);
+    isNewBest = true;
+  }
+  // 결과 표시
+  const recEl = document.getElementById('endRecord');
+  if(recEl){
+    let html = `<div style="font-size:14px;margin:8px 0 4px;color:#fff">기록 <b style="color:var(--gold);font-size:18px">${fmtTime(sec)}</b></div>`;
+    if(isNewBest) html += `<div style="font-size:13px;color:#7cffb2;margin-bottom:6px">🏆 신기록!</div>`;
+    else if(prev != null) html += `<div style="font-size:11px;color:var(--muted)">최고기록 ${fmtTime(prev)}</div>`;
+    recEl.innerHTML = html;
+  }
+  // 복습 버튼 토글
+  const reviewBtn = document.getElementById('reviewBtn');
+  if(reviewBtn){
+    if(_lastWrongList.length > 0){
+      reviewBtn.style.display = '';
+      reviewBtn.textContent = `📚 약점 복습 (${_lastWrongList.length}개)`;
+    } else {
+      reviewBtn.style.display = 'none';
+    }
+  }
+  document.getElementById('endOverlay').style.display='flex';
+  buildGoddess();
+}
+
+function fireNuke(){
+  const nuke = document.getElementById('nuke');
+  nuke.classList.add('active');
+  // 화면 흔들기
+  document.body.animate([
+    {transform:'translate(0,0)'},
+    {transform:'translate(-8px,4px)'},
+    {transform:'translate(6px,-4px)'},
+    {transform:'translate(-4px,6px)'},
+    {transform:'translate(0,0)'},
+  ], {duration:1200, iterations:2});
+  setTimeout(()=>{
+    nuke.classList.remove('active');
+    // 작은 알림
+    flashFeedback('☢️ 핵폭발! 화학의 여신이 만족했다 ☢️','ok');
+  }, 4500);
+}
+
+/* =========================
+   INIT
+   ========================= */
+buildGrid();
+buildLegend();
+// 그리드가 레이아웃되어 stage 컨테이너 크기가 정해진 다음에 캐릭터 빌드
+requestAnimationFrame(()=> requestAnimationFrame(()=> buildGirls()));
+setupCellTip();
+// 창 크기 변할 때 캐릭터 다시 그리기 (그리드 크기 변경 대응)
+let _resizeT;
+window.addEventListener('resize', ()=>{
+  clearTimeout(_resizeT);
+  _resizeT = setTimeout(()=>{ buildGirls(); }, 200);
+});
+
+function setupCellTip(){
+  const tip = document.getElementById('cellTip');
+  const grid = document.getElementById('grid');
+  grid.addEventListener('mouseover', e=>{
+    const cell = e.target.closest('.cell');
+    if(!cell || !cell.dataset.num) return;
+    const num = +cell.dataset.num;
+    const el = getEl(num); if(!el) return;
+    const [n,sym,en,ko,grp,per,cat] = el;
+    const d = DETAILS[n] || [];
+    const [mass, density, melt, boil, val] = [d[0], d[1], d[2], d[3], d[4]];
+    const isOpen = state.solved.has(num);
+    const catLabel = (CAT_INFO[cat] && CAT_INFO[cat][0]) || '?';
+    const lore = LORE[n] || [];
+    const ex = EXTRA[n] || [];
+    if(isOpen){
+      tip.innerHTML = `
+        <h4>${sym} · ${ko} (${en})</h4>
+        ${lore[0]?`<div style="font-size:9px;color:#ffd84a;margin-bottom:4px">— ${lore[0]} —</div>`:''}
+        ${lore[1]?`<div style="font-size:10px;color:#ffe9b8;font-style:italic;margin-bottom:6px;line-height:1.4">${lore[1]}</div>`:''}
+        <table>
+          <tr><td>원자번호</td><td>${n}</td></tr>
+          <tr><td>주기/족</td><td>${per}주기 · ${typeof grp==='number'?grp+'족':grp}</td></tr>
+          <tr><td>분류</td><td>${catLabel}</td></tr>
+          <tr><td>원자량</td><td>${fmt(mass,' g/mol')}</td></tr>
+          <tr><td>밀도</td><td>${fmt(density,' g/cm³')}</td></tr>
+          <tr><td>녹는점</td><td>${melt==null?'—':melt+' °C'}</td></tr>
+          <tr><td>끓는점</td><td>${boil==null?'—':boil+' °C'}</td></tr>
+          <tr><td>원자가</td><td>${val==null?'—':val}</td></tr>
+          ${ex[2]!=null?`<tr><td>전기음성도</td><td>${ex[2]}</td></tr>`:''}
+          ${ex[3]!=null?`<tr><td>이온화E</td><td>${ex[3]} kJ/mol</td></tr>`:''}
+          ${ex[4]?`<tr><td>결정구조</td><td><span style="display:inline-flex;align-items:center;gap:4px"><span style="display:inline-block;width:24px;height:18px">${xtalSvg(ex[4])}</span>${ex[4]}</span></td></tr>`:''}
+        </table>`;
+    } else {
+      tip.innerHTML = `<h4>?? · No.${n}</h4><div style="color:#b8a8ff;font-size:9px">아직 잠겨있어요. 맞히면 정보가 공개돼요!</div>`;
+    }
+    tip.classList.add('show');
+  });
+  grid.addEventListener('mousemove', e=>{
+    const tipEl = tip;
+    let x = e.clientX + 14, y = e.clientY + 14;
+    const tw = tipEl.offsetWidth, th = tipEl.offsetHeight;
+    if(x + tw > window.innerWidth - 8) x = e.clientX - tw - 14;
+    if(y + th > window.innerHeight - 8) y = e.clientY - th - 14;
+    tipEl.style.left = x+'px';
+    tipEl.style.top = y+'px';
+  });
+  grid.addEventListener('mouseout', e=>{
+    if(!e.relatedTarget || !e.relatedTarget.closest('.grid')){
+      tip.classList.remove('show');
+    }
+  });
+}
+
+// 레벨 버튼 → 게임 시작
+document.querySelectorAll('.lvBtn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const sp = parseInt(btn.dataset.start, 10) || 2;
+    const hard = document.getElementById('hardModeToggle')?.checked;
+    document.getElementById('startOverlay').style.display='none';
+    startGame(sp, {hard});
+  });
+});
+// 단축키: 1~8번 키로 빠른 시작
+document.addEventListener('keydown', e=>{
+  if(document.getElementById('startOverlay').style.display === 'none') return;
+  const map = {'1':2,'2':3,'3':4,'4':5,'5':6,'6':7,'7':8,'8':9};
+  if(map[e.key]){
+    const hard = document.getElementById('hardModeToggle')?.checked;
+    document.getElementById('startOverlay').style.display='none';
+    startGame(map[e.key], {hard});
+  }
+});
+document.getElementById('submitBtn').addEventListener('click', submit);
+document.getElementById('skipBtn').addEventListener('click', skipQuestion);
+document.getElementById('groupBtn').addEventListener('click', showGroupHint);
+
+function showGroupHint(){
+  if(state.current === null) return;
+  const cur = getEl(state.current);
+  if(!cur) return;
+  const [n,sym,en,ko,grp,per,cat] = cur;
+  // 같은 족이며 이미 오픈된 원소들 찾기 (란타넘 'L', 악티늄 'A'도 동일 키로 매칭)
+  const sameGroup = ELEMENTS.filter(el=>{
+    return el[4] === grp && el[0] !== n && state.solved.has(el[0]);
+  });
+  if(sameGroup.length === 0){
+    flashFeedback('아직 같은 족에 오픈된 원소가 없어요!','info');
+    return;
+  }
+  // 같은 족의 카테고리(분류)
+  const catName = (CAT_INFO[cat] && CAT_INFO[cat][0]) || '?';
+  const grpLabel = (typeof grp === 'number') ? `${grp}족` : (grp==='L'?'란타넘족':'악티늄족');
+  const examples = sameGroup.slice(0, 3).map(e=>`${e[1]}(${e[3]})`).join(', ');
+  flashFeedback(`💡 ${grpLabel} · ${catName} — 같은 족: ${examples}`, 'info');
+  // 셀 깜빡임
+  sameGroup.forEach(el=>{
+    const c = cellMap[el[0]];
+    if(!c) return;
+    c.classList.add('groupHint');
+  });
+  setTimeout(()=>{
+    sameGroup.forEach(el=>{
+      const c = cellMap[el[0]];
+      if(c) c.classList.remove('groupHint');
+    });
+  }, 3000);
+}
+document.getElementById('answer').addEventListener('keydown', e=>{
+  if(e.key==='Enter') submit();
+});
+document.getElementById('nukeBtn').addEventListener('click', fireNuke);
+const _reviewBtn = document.getElementById('reviewBtn');
+if(_reviewBtn) _reviewBtn.addEventListener('click', ()=>{
+  document.getElementById('endOverlay').style.display='none';
+  startReview();
+});
+document.getElementById('restartBtn').addEventListener('click', ()=>{
+  document.getElementById('endOverlay').style.display='none';
+  // 재시작 → 시작 화면 다시 띄워서 레벨 고를 수 있게
+  document.getElementById('startOverlay').style.display='flex';
+});
+
+// 디버그용: 테스트 시 빠른 클리어 (Ctrl+Shift+W)
+document.addEventListener('keydown', e=>{
+  if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='w'){
+    ELEMENTS.forEach(el=>{ state.solved.add(el[0]); openCell(el[0], false); });
+    state.okCount = 118; updateStats();
+    showEnding();
+  }
+});
+</script>
+</body>
+</html>
