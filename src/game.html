@@ -46,9 +46,9 @@
   .stat{padding:6px 10px;background:#1a0a3a;border:2px solid #3a1d6e;border-radius:4px}
   .stat b{color:var(--gold)}
 
-  .layout{display:grid;grid-template-columns: 1fr 280px;gap:12px;align-items:start}
+  .layout{display:grid;grid-template-columns: minmax(0, 1fr) 280px;gap:12px;align-items:start}
   @media (max-width: 980px){
-    .layout{grid-template-columns:1fr}
+    .layout{grid-template-columns:minmax(0, 1fr)}
     .danceCol{order:2}
     /* 셀 텍스트 축소 */
     .cell .num{font-size:6px}
@@ -63,12 +63,15 @@
   @media (max-width: 480px){
     .cell .name{display:none}
     .cell .sym{font-size:9px}
+    .app{padding:10px}
+    .grid{gap:2px;padding:3px;border-width:2px}
+    .inputPanel--top{padding:10px}
   }
 
   /* 주기율표 그리드 18x10 (1~7주기 + 란타넘/악티늄 2줄) */
   .grid{
     display:grid;
-    grid-template-columns: repeat(18, 1fr);
+    grid-template-columns: repeat(18, minmax(0, 1fr));
     grid-auto-rows: 1fr;
     gap:3px;
     aspect-ratio: 18 / 10;
@@ -420,6 +423,7 @@
 
   /* 주기율표 안에 들어간 댄스 영역 */
   .danceBox.gridDance{
+    pointer-events:none;   /* 춤추는 캐릭터가 셀·입력창 누르는 것을 막지 않게 */
     background:transparent;
     border:0;
     padding:0;
@@ -462,7 +466,7 @@
   .hintRow{font-size:13px;color:var(--cyan);letter-spacing:3px;min-height:16px;font-family:monospace}
   .inputRow{display:flex;gap:6px;align-items:center}
   .inputRow input{
-    flex:1;font-family:inherit;font-size:15px;padding:9px 10px;background:#1a0a3a;color:#fff;
+    flex:1;min-width:0;font-family:inherit;font-size:16px;padding:9px 10px;background:#1a0a3a;color:#fff;
     border:2px solid #3a1d6e;border-radius:4px;outline:none;
   }
   .inputRow input:focus{border-color:var(--pink)}
@@ -473,6 +477,12 @@
   .inputRow button:active{transform:translateY(2px);border-bottom-width:1px}
   .inputRow button.skip{background:#444;border-bottom-color:#222}
   .inputRow button.ghint{background:#7cffb2;color:#0a2a14;border-bottom-color:#3a7a4a}
+  /* 폰: 입력창은 한 줄을 다 쓰고 버튼 셋은 아래 줄에 나란히(전에는 패스 버튼이 화면 밖으로 나갔다). 위 기본 규칙 뒤에 둬야 덮어쓴다. */
+  @media (max-width: 480px){
+    .inputRow{flex-wrap:wrap}
+    .inputRow input{flex:1 1 100%}
+    .inputRow button{flex:1 1 0}
+  }
 
   /* 족 힌트로 강조된 셀 */
   .cell.groupHint{
@@ -486,7 +496,7 @@
   .feedback.bad{color:var(--red)}
   .feedback.info{color:var(--cyan)}
   @media (max-width: 980px){
-    .inputPanel--top{grid-template-columns:1fr; text-align:left}
+    .inputPanel--top{grid-template-columns:minmax(0, 1fr); text-align:left}
     .qBlock--right{text-align:left;min-width:0}
   }
 
@@ -739,7 +749,7 @@
         <div class="qBlock qBlock--mid">
           <div class="qLabel">원소 이름 (영문)</div>
           <div class="inputRow">
-            <input id="answer" autocomplete="off" placeholder="예: hydrogen" />
+            <input id="answer" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="예: lithium" />
             <button id="submitBtn">제출</button>
             <button id="groupBtn" class="ghint" title="같은 족 원소 강조">족힌트</button>
             <button id="skipBtn" class="skip">패스</button>
@@ -1661,6 +1671,7 @@ function buildLegend(){
    GAME LOGIC
    ========================= */
 const state = {
+  busy: false,     // 정답·정답 공개·패스 뒤 다음 문제로 넘어가는 동안 true. 이때 Enter·패스를 받지 않는다(두 번 눌러 원소가 사라지던 것)
   remaining: [],   // 미해결 원자번호 큐 (랜덤)
   retryNeeds: {},  // num -> 남은 정답 횟수 (틀린 적 있는 문제)
   current: null,
@@ -1745,6 +1756,8 @@ function startGame(startStage, opts){
   state.retryNeeds = {};
   state.wrongOnce = new Set(); // 한 번이라도 틀리거나 패스한 원소(복습 모드용)
   state.current = null;
+  state.busy = false;
+  state.cheated = false;
   state.okCount = state.missCount = state.passCount = 0;
   // 타이머 시작
   startTimer();
@@ -1934,6 +1947,7 @@ function showRowBanner(label){
 }
 
 function nextQuestion(){
+  state.busy = false;
   // 클리어 체크
   if(state.solved.size === 118){
     showEnding();
@@ -2533,15 +2547,22 @@ function burstAt(x, y, num){
   setTimeout(()=>document.body.classList.remove('shake'), 360);
 }
 
+// 철자만 다른 정당한 이름도 정답(IUPAC·영국식). 다른 이름(wolfram 등)은 받지 않는다.
+const SPELLING_VARIANTS = {13:['aluminium'], 55:['caesium'], 16:['sulphur']};
 function submit(){
-  if(state.current===null) return;
+  if(state.current===null || state.busy) return;
   const input = document.getElementById('answer');
   const guess = (input.value||'').trim().toLowerCase();
   if(!guess) return;
   const el = getEl(state.current);
   const correct = el[2].toLowerCase();
-  if(guess === correct){
+  const variant = (SPELLING_VARIANTS[state.current]||[]).includes(guess);
+  if(guess === correct || variant){
     onCorrect();
+    if(variant){
+      const fb = document.getElementById('feedback');
+      fb.textContent += ` (${guess} · ${correct} 둘 다 맞는 철자)`;
+    }
   } else {
     onWrong();
   }
@@ -2731,6 +2752,7 @@ function onCorrect(){
   }
   state.okCount += 1;
   updateStats();
+  state.busy = true;
   setTimeout(nextQuestion, 700);
 }
 
@@ -2761,6 +2783,7 @@ function onWrong(){
       state.remaining.splice(idx,0,num);
     }
     updateStats();
+    state.busy = true;
     setTimeout(nextQuestion, 1700);
   } else {
     showHint();
@@ -2770,7 +2793,7 @@ function onWrong(){
 }
 
 function skipQuestion(){
-  if(state.current===null) return;
+  if(state.current===null || state.busy) return;
   stopQuestionCountdown();
   const num = state.current;
   const el = getEl(num);
@@ -2786,6 +2809,7 @@ function skipQuestion(){
     state.remaining.splice(idx,0,num);
   }
   updateStats();
+  state.busy = true;
   setTimeout(nextQuestion, 900);
 }
 
@@ -3092,9 +3116,11 @@ function buildGirls(){
     const containerW = stage.clientWidth || 300;
     const frameNatW = natW / SPRITE_FRAMES;
     // 높이 75%, 너비 70%만 사용해서 위쪽 여유 ↑
-    const scaleByH = (containerH * 0.75) / natH;
+    // 폰처럼 빈 칸이 작으면(140px 미만) 칸 높이에 거의 꽉 맞춘다. 최소 배율 0.4를 지키면 캐릭터가 입력창까지 올라가 가렸다.
+    const small = containerH < 140;
+    const scaleByH = (containerH * (small ? 0.98 : 0.75)) / natH;
     const scaleByW = (containerW * 0.70) / frameNatW;
-    const scale = Math.max(0.4, Math.min(scaleByH, scaleByW, 1.2));
+    const scale = Math.max(small ? 0.05 : 0.4, Math.min(scaleByH, scaleByW, 1.2));
     const fw = frameNatW * scale;
     const fh = natH * scale;
     const total = natW * scale;
@@ -3282,6 +3308,7 @@ function startReview(){
   state.retryNeeds = {};
   state.wrongOnce = new Set();
   state.current = null;
+  state.busy = false;
   state.okCount = state.missCount = state.passCount = 0;
   state.hardMode = false;
   state.reviewMode = true;
@@ -3316,17 +3343,18 @@ function showEnding(){
   _lastWrongList = state.wrongOnce ? Array.from(state.wrongOnce) : [];
   stopTimer();
   const sec = elapsedSec();
-  // 최고기록 갱신
-  const prev = getBest(state.startStage, state.hardMode);
+  // 최고기록: 118개를 다 채운 정식 판만 남긴다. 복습 판과 디버그 클리어(Ctrl+Shift+W)는 기록을 바꾸지 않는다.
+  const counts = !state.reviewMode && !state.cheated && state.solved.size === 118;
+  const prev = counts ? getBest(state.startStage, state.hardMode) : null;
   let isNewBest = false;
-  if(prev == null || sec < prev){
+  if(counts && (prev == null || sec < prev)){
     setBest(state.startStage, state.hardMode, sec);
     isNewBest = true;
   }
   // 결과 표시
   const recEl = document.getElementById('endRecord');
   if(recEl){
-    let html = `<div style="font-size:14px;margin:8px 0 4px;color:#fff">기록 <b style="color:var(--gold);font-size:18px">${fmtTime(sec)}</b></div>`;
+    let html = `<div style="font-size:14px;margin:8px 0 4px;color:#fff">${state.reviewMode?'복습 시간':'기록'} <b style="color:var(--gold);font-size:18px">${fmtTime(sec)}</b></div>`;
     if(isNewBest) html += `<div style="font-size:13px;color:#7cffb2;margin-bottom:6px">🏆 신기록!</div>`;
     else if(prev != null) html += `<div style="font-size:11px;color:var(--muted)">최고기록 ${fmtTime(prev)}</div>`;
     recEl.innerHTML = html;
@@ -3381,6 +3409,14 @@ window.addEventListener('resize', ()=>{
 function setupCellTip(){
   const tip = document.getElementById('cellTip');
   const grid = document.getElementById('grid');
+  const place = e=>{
+    let x = e.clientX + 14, y = e.clientY + 14;
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    if(x + tw > window.innerWidth - 8) x = e.clientX - tw - 14;
+    if(y + th > window.innerHeight - 8) y = e.clientY - th - 14;
+    tip.style.left = Math.max(8, x)+'px';
+    tip.style.top = Math.max(8, y)+'px';
+  };
   grid.addEventListener('mouseover', e=>{
     const cell = e.target.closest('.cell');
     if(!cell || !cell.dataset.num) return;
@@ -3415,16 +3451,9 @@ function setupCellTip(){
       tip.innerHTML = `<h4>?? · No.${n}</h4><div style="color:#b8a8ff;font-size:9px">아직 잠겨있어요. 맞히면 정보가 공개돼요!</div>`;
     }
     tip.classList.add('show');
+    place(e);
   });
-  grid.addEventListener('mousemove', e=>{
-    const tipEl = tip;
-    let x = e.clientX + 14, y = e.clientY + 14;
-    const tw = tipEl.offsetWidth, th = tipEl.offsetHeight;
-    if(x + tw > window.innerWidth - 8) x = e.clientX - tw - 14;
-    if(y + th > window.innerHeight - 8) y = e.clientY - th - 14;
-    tipEl.style.left = x+'px';
-    tipEl.style.top = y+'px';
-  });
+  grid.addEventListener('mousemove', place);
   grid.addEventListener('mouseout', e=>{
     if(!e.relatedTarget || !e.relatedTarget.closest('.grid')){
       tip.classList.remove('show');
@@ -3505,6 +3534,7 @@ document.getElementById('restartBtn').addEventListener('click', ()=>{
 document.addEventListener('keydown', e=>{
   if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='w'){
     ELEMENTS.forEach(el=>{ state.solved.add(el[0]); openCell(el[0], false); });
+    state.cheated = true;   // 기록에 남기지 않는다
     state.okCount = 118; updateStats();
     showEnding();
   }
