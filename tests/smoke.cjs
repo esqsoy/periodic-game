@@ -7,6 +7,7 @@
 //  3. 정답 뒤 Enter를 두 번 눌러도 한 번만 센다(전에는 원소 하나가 사라졌다).
 //  4. aluminium·caesium·sulphur는 정답, wolfram은 오답.
 //  5. 한 판을 끝까지 하면 기록이 남고, 약점 복습과 디버그 클리어는 기록을 바꾸지 않는다.
+//  6. 제자리 춤(장별 위치), 세 번 틀린 뒤 따라 쓰기, 이름 듣기(끄면 안 읽음), 새로고침 뒤 이어하기·끝내면 저장 지움.
 const path = require('node:path');
 const {chromium} = require('playwright');
 const ROOT = path.resolve(__dirname, '..');
@@ -80,9 +81,42 @@ const ok = (cond, msg) => { if (!cond) fail.push(msg); };
   await p.evaluate(() => { document.getElementById('restartBtn').click(); document.querySelector('.lvBtn[data-start="2"]').click(); }); await p.waitForTimeout(200);
   await p.keyboard.press('Control+Shift+KeyW'); await p.waitForTimeout(200);
   ok(await p.evaluate(() => localStorage.getItem('zerotwo_best_2') === null), '디버그 클리어가 기록을 남겼다');
+  // 제자리 춤: 장마다 위치를 따로 잰다(초기 버전 그림은 간격이 고르지 않다)
+  for (const file of ['periodic-girl.html', 'periodic-sweden.html']) {
+    await p.goto(url(file));
+    await p.waitForFunction(() => Array.isArray(SPRITE_POS), null, {timeout: 15000}).catch(() => {});
+    const pos = await p.evaluate(() => SPRITE_POS);
+    ok(Array.isArray(pos) && pos.length === 8, `${file}: 장별 위치가 없다`);
+    if (file === 'periodic-girl.html') ok(pos.some((x, k) => Math.abs(x - k / 7 * 100) > 1), '초기 버전: 장별 위치가 같은 간격 그대로다');
+  }
+  // 정답 따라 쓰기 + 이름 듣기(음성은 가짜로 바꿔 무엇을 읽었는지 본다)
+  await start(2);
+  await p.evaluate(() => { window._said = []; speechSynthesis.speak = u => window._said.push(u.text); speechSynthesis.cancel = () => {}; soundOn = true; });
+  const num = await p.evaluate(() => state.current), name = await p.evaluate(() => getEl(state.current)[2]);
+  for (let i = 0; i < 3; i++) { await p.fill('#answer', 'xxx'); await p.press('#answer', 'Enter'); }
+  ok(await p.evaluate(() => state.copyMode), '세 번 틀린 뒤 따라 쓰기로 가지 않았다');
+  ok(await p.evaluate(n => window._said.includes(n), name), '정답이 나올 때 이름을 읽지 않았다');
+  await p.fill('#answer', 'zzz'); await p.press('#answer', 'Enter'); await p.waitForTimeout(800);
+  ok(await p.evaluate(n => state.copyMode && state.current === n && state.missCount === 3, num), '따라 쓰기에서 틀리면 그 문제에 머물러야 하고 오답으로 세지 않아야 한다');
+  await p.fill('#answer', name.toLowerCase()); await p.press('#answer', 'Enter'); await p.waitForTimeout(800);
+  ok(await p.evaluate(n => !state.copyMode && state.current !== n && state.retryNeeds[n] === 2, num), '따라 쓰기를 맞게 쳤는데 넘어가지 않았다');
+  const next = await p.evaluate(() => getEl(state.current)[2]);
+  await p.evaluate(() => { window._said = []; soundOn = false; });
+  await p.fill('#answer', next); await p.press('#answer', 'Enter'); await p.waitForTimeout(800);
+  ok(await p.evaluate(() => window._said.length === 0), '발음을 꺼도 읽었다');
+  // 이어하기: 새로고침해도 그 판, 경과 시간부터
+  const snap = await p.evaluate(() => ({solved: state.solved.size, cur: state.current, el: elapsedSec(), ok: state.okCount}));
+  await p.reload(); await p.waitForTimeout(500);
+  ok(await p.evaluate(() => !!document.getElementById('resumeBtn')), '새로고침 뒤 이어하기 단추가 없다');
+  await p.evaluate(() => document.getElementById('resumeBtn').click()); await p.waitForTimeout(300);
+  const back = await p.evaluate(() => ({solved: state.solved.size, cur: state.current, el: elapsedSec(), ok: state.okCount}));
+  ok(back.solved === snap.solved && back.cur === snap.cur && back.ok === snap.ok && back.el >= snap.el, `이어하기가 판을 되살리지 못했다 ${JSON.stringify([snap, back])}`);
+  await p.evaluate(() => { ELEMENTS.forEach(e => state.solved.add(e[0])); state.remaining = []; state.retryNeeds = {}; state.rowQueue.length = state.currentRowIdx + 1; nextQuestion(); });
+  await p.waitForTimeout(200);
+  ok(await p.evaluate(() => localStorage.getItem('zerotwo_save_v1') === null), '판을 끝냈는데 이어하기 저장이 남았다');
   ok(errs.length === 0, `동작 검사 오류: ${errs.join(' / ')}`);
   await b.close();
   } catch (e) { fail.push('검사 중단: ' + e.message.split('\n')[0]); }
   if (fail.length) { console.log('FAIL\n- ' + fail.join('\n- ')); process.exit(1); }
-  console.log('PASS 두 버전 × 화면 4개 배치, Enter 두 번, 철자 변형, 완주·복습·디버그 기록');
+  console.log('PASS 두 버전 × 화면 4개 배치, Enter 두 번, 철자 변형, 완주·복습·디버그 기록, 제자리 춤, 따라 쓰기, 이름 듣기, 이어하기');
 })();
